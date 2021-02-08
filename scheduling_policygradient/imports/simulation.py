@@ -46,9 +46,6 @@ class Simulation:
 
     def build_reward(self):
         reward = 0
-        # print('c', self.sum_capacity[-1])
-        # print('j', self.jobs_lost[-1])
-        # print('d', self.datarate_satisfaction[-1])
         reward += self.config.lambda_reward[0] * self.sum_capacity[-1]  # Throughput
         reward -= self.config.lambda_reward[1] * self.jobs_lost[-1]  # Latency constraint violations
         reward += self.config.lambda_reward[2] * self.datarate_satisfaction[-1]
@@ -65,27 +62,34 @@ class Simulation:
         self.total_units_requested = self.get_len_job_list()
 
         for user in self.users.values():
-            # Increment user runtime while they have a job in queue -> data rates not tied to chance
+            # Increment user runtime while they have a job in queue-----------------------------------------------------
             if user.jobs:
                 user.runtime += 1
-            # Allocate resources to jobs, oldest first------------------------------------------------------------------
+
+            # Allocate resources to jobs according to allocation solution, oldest jobs first----------------------------
+            # Fetch job delays or ages per job for user
             job_delays = []
-            for job in user.jobs:  # List delay of jobs
+            for job in user.jobs:
                 job_delays += [job.delay]
 
-            while allocation_vector_copy[user.user_id] > 0:  # Allocate blocks of jobs, oldest jobs first
+            # Allocate blocks of jobs, oldest jobs first
+            while allocation_vector_copy[user.user_id] > 0:
+                # Determine oldest job
                 highest_delay_id = int(np.argmax(job_delays))
-                units_sent = min(allocation_vector_copy[user.user_id], user.jobs[highest_delay_id].size)
 
+                # Send as many resources to this job as allowed, remove from pool
+                units_sent = min(allocation_vector_copy[user.user_id], user.jobs[highest_delay_id].size)
                 allocation_vector_copy[user.user_id] -= units_sent
                 user.jobs[highest_delay_id].size -= units_sent
-                if user.jobs[highest_delay_id].size == 0:  # Job fully processed
+
+                # Check if job fully processed
+                if user.jobs[highest_delay_id].size == 0:
                     user.jobs.pop(highest_delay_id)  # Remove from job list
                     job_delays.pop(highest_delay_id)  # Remove from delay ranking
 
-                user.units_received += units_sent  # Update internal statistics
+                # Update users internal stats
+                user.units_received += units_sent
                 user.update_statistics()
-            user.update_channel_quality(pos_base_station=self.base_station.pos)
 
             # Increment delay metric to remaining jobs, remove jobs over delay------------------------------------------
             for job in user.jobs:
@@ -102,6 +106,9 @@ class Simulation:
 
             # Update datarate_satisfaction metric-----------------------------------------------------------------------
             datarate_satisfaction += min(user.datarate_satisfaction, 1)  # 1 for minimum datarate met, less else
+
+            # Roll new channel according to position, fading------------------------------------------------------------
+            user.update_channel_quality(pos_base_station=self.base_station.pos)
 
         self.sum_capacity = np.append(self.sum_capacity, sum_capacity)
         self.jobs_lost = np.append(self.jobs_lost, jobs_lost)

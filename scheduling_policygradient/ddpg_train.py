@@ -1,10 +1,11 @@
 import matplotlib.pyplot as plt
+from os.path import join
 
 from scheduling_policygradient.ddpg_runner import Runner
 
 import sys
-sys.path.append('C:\\Py\\robbot')
-from SendMessage import send
+sys.path.append(join('/Py', 'robbot'))
+from robbot_imports.SendMessage import send
 
 
 def main():

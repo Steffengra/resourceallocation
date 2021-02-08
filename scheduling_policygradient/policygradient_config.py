@@ -1,7 +1,10 @@
 
+from os.path import (join, dirname)
+
+
 class Config:
     def __init__(self):
-        self.num_episodes: int = 20_000
+        self.num_episodes: int = 10_000
         self.steps_per_episode: int = 50
 
         self.user_snr: float = 20
@@ -10,7 +13,7 @@ class Config:
         self.num_channels: int = 16
         self.new_job_chance: float = .20
 
-        self.lambda_reward: tuple = (1, 1, .25)  # Weighting of reward sum components
+        self.lambda_reward: tuple = (.25, 1, .25)  # Weighting of reward sum components
 
         self.num_users_normal: int = 5
         self.num_users_high_datarate: int = 2
@@ -32,8 +35,8 @@ class Config:
 
         # Training Parameters-------------------------------------------------------------------------------------------
         self.num_hidden: list = [300, 300, 300, 300, 400, 300]  # Hidden layers' numbers of nodes
-        self.learning_rate_q: float = 1 * 1e-5  # learning rate
-        self.learning_rate_a: float = 1 * 1e-6  # learning rate for actor
+        self.learning_rate_q: float = 1 * 1e-4  # learning rate for critic
+        self.learning_rate_a: float = 1 * 1e-5  # learning rate for actor
         self.gamma: float = 0.00  # Future reward discount
         self.loss_function: str = 'mse'  # mse, huber
         self.min_experiences: int = 100  # Min experiences in buffer to start training
@@ -49,9 +52,8 @@ class Config:
         self.prioritization_factors: list = [.5, .5]  # [alpha, beta]
         self.prioritization_factor_gain: float = (1 - self.prioritization_factors[1]) / (0.8 * self.num_episodes)
 
-        self.model_path_critic: str = 'SavedModels\\ddpg\\q_primary'  # Path for saving the final trained model
-        self.model_path_actor: str = 'SavedModels\\ddpg\\actor'  # Path for saving the final trained model
-        self.checkpoint_path: str = 'SavedModels\\ddpg\\cps\\q_primary'  # Path for saving checkpoints
+        self.model_path: str = join(dirname(__file__), 'SavedModels', 'ddpg')
+        self.log_path: str = join(dirname(__file__), 'logs')
 
         # Plotting------------------------------------------------------------------------------------------------------
         # Branding Palette

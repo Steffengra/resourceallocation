@@ -1,15 +1,19 @@
+import gzip
+import pickle
+from os.path import join
+from shutil import copy2
+
+import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
-import matplotlib.pyplot as plt
-import gzip, pickle
 
-from scheduling_policygradient.policygradient_config import Config
 from scheduling_policygradient.imports.actor_critic import ActorCritic
-from scheduling_policygradient.imports.simulation import Simulation
-from scheduling_policygradient.imports.scheduling import maximum_throughput_scheduler
 from scheduling_policygradient.imports.scheduling import delay_sensitive_scheduler
 from scheduling_policygradient.imports.scheduling import max_min_fair_scheduler
+from scheduling_policygradient.imports.scheduling import maximum_throughput_scheduler
 from scheduling_policygradient.imports.scheduling import random_scheduler
+from scheduling_policygradient.imports.simulation import Simulation
+from scheduling_policygradient.policygradient_config import Config
 
 
 class Runner:
@@ -60,7 +64,7 @@ class Runner:
         for user in self.ddpg_simulation.users.values():
             timeouts = np.array([])
             # weighted_size = np.array([])
-            timeout_size = np.array([])
+            # timeout_size = np.array([])
             for job in user.jobs:
                 timeouts = np.append(timeouts, 1/(user.latency_max - job.delay))
                 # weighted_size = np.append(weighted_size, timeouts[-1] * job.size)
@@ -335,7 +339,8 @@ class Runner:
             if self.checkpoint_criterion(episode_id=episode_id, episode_rewards=ddpg_episode_rewards):
                 self.actor_critic.actor_primary.predict(
                     np.random.rand(len(state_old))[np.newaxis])
-                self.actor_critic.actor_primary.save(self.config.model_path_actor+'\\cp', save_format='tf')
+                self.actor_critic.actor_primary.save(
+                    join(self.config.model_path, 'actor', 'cp'), save_format='tf')
 
             # Reset simulation for the next episode---------------------------------------------------------------------
             self.ddpg_simulation.reset()
@@ -362,11 +367,9 @@ class Runner:
         print('\r ..Done', flush=True)
 
         # Logging-------------------------------------------------------------------------------------------------------
-        with gzip.open('C:\\Py\\MasterThesis\\resourceallocation\\scheduling_policygradient\\logs\\training_rewardestimationcritic.gstor',
-                       'wb') as file:
+        with gzip.open(join(self.config.log_path, 'training_rewardestimationcritic.gstor'), 'wb') as file:
             pickle.dump([mean_episode_errors, relative_mean_episode_errors], file)
-        with gzip.open('C:\\Py\\MasterThesis\\resourceallocation\\scheduling_policygradient\\logs\\training_rewardsachieved.gstor',
-                       'wb') as file:
+        with gzip.open(join(self.config.log_path, 'training_rewardsachieved.gstor'), 'wb') as file:
             pickle.dump(ddpg_episode_rewards, file)
 
         # Plotting------------------------------------------------------------------------------------------------------
@@ -413,11 +416,14 @@ class Runner:
         # required bc custom model save bug:
         self.actor_critic.q_primary.predict(
             np.random.rand(len(processed_allocation) + len(state_old))[np.newaxis])
-        self.actor_critic.q_primary.save(self.config.model_path_critic, save_format='tf')
+        self.actor_critic.q_primary.save(join(self.config.model_path, 'q_primary'), save_format='tf')
 
         self.actor_critic.actor_primary.predict(
             np.random.rand(len(state_old))[np.newaxis])
-        self.actor_critic.actor_primary.save(self.config.model_path_actor, save_format='tf')
+        self.actor_critic.actor_primary.save(join(self.config.model_path, 'actor'), save_format='tf')
+
+        # Save associated config----------------------------------------------------------------------------------------
+        copy2('policygradient_config.py', self.config.model_path)
 
     def test(self):
         # Tests a trained ddpg against basic algorithms
@@ -430,10 +436,7 @@ class Runner:
         print('Mean arrival load per resource:', mean_arrival_load / self.config.num_channels)
 
         # Load trained models-------------------------------------------------------------------------------------------
-        # self.actor_critic.q_primary = tf.keras.models.load_model(self.config.model_path_critic)
-        # self.actor_critic.actor_primary = tf.keras.models.load_model(self.config.model_path_actor)
-        load_path = 'C:\\Py\\MasterThesis\\resourceallocation\\scheduling_policygradient\\SavedModels\\ddpg_working_alter_postproc_4_128batch\\'
-        actor = tf.keras.models.load_model(load_path + 'actor')
+        actor = tf.keras.models.load_model(join(self.config.model_path, 'actor'))
 
         # Set up comparison setups--------------------------------------------------------------------------------------
         maximum_throughput_simulation = Simulation(config=self.config)
@@ -581,28 +584,23 @@ class Runner:
 
         print('\r ..Done', flush=True)
         # Logging-------------------------------------------------------------------------------------------------------
-        with gzip.open('C:\\Py\\MasterThesis\\resourceallocation\\scheduling_policygradient\\logs\\testing_throughputs.gstor',
-                       'wb') as file:
+        with gzip.open(join(self.config.log_path, 'testing_throughputs.gstor'), 'wb') as file:
             pickle.dump([max_throughput_mean_throughput_per_episode, max_min_fair_mean_throughput_per_episode,
                          delay_sensitive_mean_throughput_per_episode, actor_critic_mean_throughput_per_episode,
                          random_sim_mean_throughput_per_episode], file)
-        with gzip.open('C:\\Py\\MasterThesis\\resourceallocation\\scheduling_policygradient\\logs\\testing_latencyviolations.gstor',
-                       'wb') as file:
+        with gzip.open(join(self.config.log_path, 'testing_latencyviolations.gstor'), 'wb') as file:
             pickle.dump([max_throughput_latency_violations_per_episode, max_min_fair_latency_violations_per_episode,
                          delay_sensitive_latency_violations_per_episode, actor_critic_latency_violations_per_episode,
                          random_sim_latency_violations_per_episode], file)
-        with gzip.open('C:\\Py\\MasterThesis\\resourceallocation\\scheduling_policygradient\\logs\\testing_dataratesat.gstor',
-                       'wb') as file:
+        with gzip.open(join(self.config.log_path, 'testing_dataratesat.gstor'), 'wb') as file:
             pickle.dump([max_throughput_datarate_satisfaction_per_episode, max_min_fair_datarate_satisfaction_per_episode,
                          delay_sensitive_datarate_satisfaction_per_episode, actor_critic_datarate_satisfaction_per_episode,
                          random_sim_datarate_sastisfaction_per_episode], file)
-        with gzip.open('C:\\Py\\MasterThesis\\resourceallocation\\scheduling_policygradient\\logs\\testing_rewards.gstor',
-                       'wb') as file:
+        with gzip.open(join(self.config.log_path, 'testing_rewards.gstor'), 'wb') as file:
             pickle.dump([max_throughput_rewards_per_episode, max_min_fair_rewards_per_episode,
                          delay_sensitive_rewards_per_episode, actor_critic_rewards_per_episode,
                          random_sim_rewards_per_episode], file)
-        with gzip.open('C:\\Py\\MasterThesis\\resourceallocation\\scheduling_policygradient\\logs\\testing_resources_used.gstor',
-                       'wb') as file:
+        with gzip.open(join(self.config.log_path, 'testing_resources_used.gstor'), 'wb') as file:
             pickle.dump(actor_resources_used, file)
 
         # Plotting------------------------------------------------------------------------------------------------------

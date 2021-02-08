@@ -85,7 +85,6 @@ class Simulation:
 
                 user.units_received += units_sent  # Update internal statistics
                 user.update_statistics()
-            user.update_channel_quality(pos_base_station=self.base_station.pos)
 
             # Increment delay metric to remaining jobs, remove jobs over delay------------------------------------------
             for job in user.jobs:
@@ -102,6 +101,9 @@ class Simulation:
 
             # Update datarate_satisfaction metric-----------------------------------------------------------------------
             datarate_satisfaction += min(user.datarate_satisfaction, 1)  # 1 for minimum datarate met, less else
+
+            # Roll new channel quality----------------------------------------------------------------------------------
+            user.update_channel_quality(pos_base_station=self.base_station.pos)
 
         self.sum_capacity = np.append(self.sum_capacity, sum_capacity)
         self.jobs_lost = np.append(self.jobs_lost, jobs_lost)
