@@ -1,6 +1,6 @@
 import numpy as np
 
-from scheduling_policygradient.imports.user import UserNormal, UserLowLatency, UserHighDatarate
+from scheduling_policygradient.imports.user import UserNormal, UserLowLatency, UserHighDatarate, UserEmergencyVehicle
 from scheduling_policygradient.imports.base_station import BaseStation
 
 
@@ -15,21 +15,25 @@ class Simulation:
             self.users[user_counter] = UserNormal(pos_base_station=self.base_station.pos, user_id=user_counter)
             user_counter += 1
         for _ in range(config.num_users_high_datarate):
-            self.users[user_counter] = (UserHighDatarate(pos_base_station=self.base_station.pos, user_id=user_counter))
+            self.users[user_counter] = UserHighDatarate(pos_base_station=self.base_station.pos, user_id=user_counter)
             user_counter += 1
         for _ in range(config.num_users_low_latency):
-            self.users[user_counter] = (UserLowLatency(pos_base_station=self.base_station.pos, user_id=user_counter))
+            self.users[user_counter] = UserLowLatency(pos_base_station=self.base_station.pos, user_id=user_counter)
+            user_counter += 1
+        for _ in range(config.num_users_EV):
+            self.users[user_counter] = UserEmergencyVehicle(pos_base_station=self.base_station.pos, user_id=user_counter)
             user_counter += 1
 
         # Generate Initial Job Queue------------------------------------------------------------------------------------
         self.generate_jobs(chance=config.new_job_chance)
 
         # Statistics----------------------------------------------------------------------------------------------------
-        self.total_units_requested = np.array([])
-        self.sum_capacity = np.array([])
-        self.jobs_lost = np.array([])  # Number of jobs lost from violating latency constraints
-        self.datarate_satisfaction = np.array([])
-        self.rewards = np.array([])
+        self.total_units_requested: np.ndarray = np.array([])
+        self.sum_capacity: np.ndarray = np.array([])
+        self.jobs_lost: np.ndarray = np.array([])  # Number of jobs lost from violating latency constraints
+        self.datarate_satisfaction: np.ndarray = np.array([])
+        self.rewards: np.ndarray = np.array([])
+        self.jobs_lost_EV_only: np.ndarray = np.array([])
 
     def generate_jobs(self, chance):
         for user in self.users.values():  # add a job per user..
@@ -45,10 +49,11 @@ class Simulation:
         return units_requested
 
     def build_reward(self):
-        reward = 0
-        reward += self.config.lambda_reward[0] * self.sum_capacity[-1]  # Throughput
-        reward -= self.config.lambda_reward[1] * self.jobs_lost[-1]  # Latency constraint violations
-        reward += self.config.lambda_reward[2] * self.datarate_satisfaction[-1]
+        reward = 0 \
+                 + self.config.lambda_reward['Sum Capacity'] * self.sum_capacity[-1] \
+                 - self.config.lambda_reward['Packet Timeouts'] * self.jobs_lost[-1] \
+                 + self.config.lambda_reward['Packet Rate'] * self.datarate_satisfaction[-1] \
+                 - self.config.lambda_reward['EV Packet Timeouts'] * self.jobs_lost_EV_only[-1]
         # print('r', reward)
 
         return reward
@@ -56,6 +61,7 @@ class Simulation:
     def step(self, allocation_vector):
         sum_capacity: float = 0
         jobs_lost: int = 0
+        jobs_lost_EV_only: int = 0
         datarate_satisfaction: float = 0
         allocation_vector_copy = allocation_vector.copy()
 
@@ -100,6 +106,9 @@ class Simulation:
                     jobs_lost += 1  # Count latency constraint violation
                     user.update_statistics()
 
+                    if user.type == 'EmergencyVehicle':
+                        jobs_lost_EV_only += 1
+
             # Update sum_capacity metric--------------------------------------------------------------------------------
             sum_capacity += allocation_vector[user.user_id] * np.log10(
                 1 + user.channel_quality * user.signal_noise_ratio)
@@ -113,6 +122,7 @@ class Simulation:
         self.sum_capacity = np.append(self.sum_capacity, sum_capacity)
         self.jobs_lost = np.append(self.jobs_lost, jobs_lost)
         self.datarate_satisfaction = np.append(self.datarate_satisfaction, datarate_satisfaction)
+        self.jobs_lost_EV_only = np.append(self.jobs_lost_EV_only, jobs_lost_EV_only)
         self.rewards = np.append(self.rewards, self.build_reward())
 
     def reset(self):

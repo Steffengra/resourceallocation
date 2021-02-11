@@ -1,10 +1,12 @@
 
 from os.path import (join, dirname)
+from numpy import floor
 
 
 class Config:
     def __init__(self):
-        self.num_episodes: int = 10_000
+        simulation_title: str = 'ddpg'
+        self.num_episodes: int = 25_000
         self.steps_per_episode: int = 50
 
         self.user_snr: float = 20
@@ -13,12 +15,16 @@ class Config:
         self.num_channels: int = 16
         self.new_job_chance: float = .20
 
-        self.lambda_reward: tuple = (.25, 1, .25)  # Weighting of reward sum components
+        self.lambda_reward: dict = {'Sum Capacity': .25,
+                                    'Packet Timeouts': 1,
+                                    'Packet Rate': .25,
+                                    'EV Packet Timeouts': 1}
 
         self.num_users_normal: int = 5
         self.num_users_high_datarate: int = 2
         self.num_users_low_latency: int = 2
-        self.num_users = self.num_users_normal + self.num_users_high_datarate + self.num_users_low_latency
+        self.num_users_EV: int = 1
+        self.num_users: int = self.num_users_normal + self.num_users_high_datarate + self.num_users_low_latency + self.num_users_EV
 
         # Normal user profile-------------------
         self.normal_datarate: int = 9
@@ -30,8 +36,12 @@ class Config:
         self.high_datarate_job_size_max: int = 40
         # LowLatency user profile---------------
         self.low_latency_datarate: int = self.normal_datarate
-        self.low_latency_latency: int = 1
-        self.low_latency_job_size_max: int = self.num_channels
+        self.low_latency_latency: int = 2
+        self.low_latency_job_size_max: int = int(floor(self.num_channels / 2))
+        # EmergencyVehicle user profile---------
+        self.EV_datarate: int = self.normal_datarate
+        self.EV_latency: int = 1
+        self.EV_job_size_max: int = self.num_channels
 
         # Training Parameters-------------------------------------------------------------------------------------------
         self.num_hidden: list = [300, 300, 300, 300, 400, 300]  # Hidden layers' numbers of nodes
@@ -52,7 +62,7 @@ class Config:
         self.prioritization_factors: list = [.5, .5]  # [alpha, beta]
         self.prioritization_factor_gain: float = (1 - self.prioritization_factors[1]) / (0.8 * self.num_episodes)
 
-        self.model_path: str = join(dirname(__file__), 'SavedModels', 'ddpg')
+        self.model_path: str = join(dirname(__file__), 'SavedModels', simulation_title)
         self.log_path: str = join(dirname(__file__), 'logs')
 
         # Plotting------------------------------------------------------------------------------------------------------

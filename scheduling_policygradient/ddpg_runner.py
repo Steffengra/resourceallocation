@@ -1,6 +1,6 @@
 import gzip
 import pickle
-from os.path import join
+from os.path import (join, isfile)
 from shutil import copy2
 
 import matplotlib.pyplot as plt
@@ -50,12 +50,6 @@ class Runner:
         # state = np.append(state, requests)  # append requests as is
         state = np.append(state, requests / self.config.num_channels)  # or relative to available res
 
-        # indicator "user is requesting"--------
-        # requesting = np.zeros([])
-        # for user in self.ddpg_simulation.users.values():
-        #     if user.units_requested > 0:
-        #         requesting[user.user_id] = 1
-
         # channel state per user-----------------
         for user in self.ddpg_simulation.users.values():
             state = np.append(state, user.channel_quality)
@@ -85,10 +79,6 @@ class Runner:
         #     quality = user.channel_quality
         #     length = user.units_requested
         #     state = np.append(state, quality * length)
-
-        # data rate satisfaction
-        # for user in self.ddpg_simulation.users.values():  # Gather datarate satisfaction
-        #     state = np.append(state, user.datarate_satisfaction)
 
         return state
 
@@ -228,7 +218,7 @@ class Runner:
             fixed_allocation_vector[max_id] += 1
             remaining_resources -= 1
             leftovers[max_id] = 0
-        #
+
         # Allocate remaining resources, for use in testing
         if remaining_resources > 0:
             remaining_requests = np.zeros(self.config.num_users)
@@ -281,7 +271,8 @@ class Runner:
         mean_arrival_load = self.config.new_job_chance * (
                 self.config.num_users_normal * self.config.normal_job_size_max / 2 +
                 self.config.num_users_high_datarate * self.config.high_datarate_job_size_max / 2 +
-                self.config.num_users_low_latency * self.config.low_latency_job_size_max)
+                self.config.num_users_low_latency * self.config.low_latency_job_size_max / 2 +
+                self.config.num_users_EV * self.config.EV_job_size_max / 2)
 
         print('Mean arrival load per resource:', mean_arrival_load / self.config.num_channels)
 
@@ -290,7 +281,6 @@ class Runner:
 
         # logging
         mean_episode_errors = np.zeros(self.config.num_episodes)
-        relative_mean_episode_errors = np.zeros(self.config.num_episodes)
         ddpg_episode_rewards = np.zeros(self.config.num_episodes)
 
         for episode_id in range(self.config.num_episodes):
@@ -301,13 +291,13 @@ class Runner:
                 state_old = self.gather_state()
                 actor_allocation = self.actor_critic.get_action(state_old).numpy().squeeze()
                 noisy_actor_allocation = self.add_noise(actor_allocation, noise_multiplier)
-                noisy_actor_allocation = np.array([min(max(val, 0), 1) for val in noisy_actor_allocation])
+                noisy_actor_allocation = np.array([min(max(val, 0), 1) for val in noisy_actor_allocation])  # clip
                 if sum(noisy_actor_allocation) > 0:
                     noisy_actor_allocation = noisy_actor_allocation / sum(noisy_actor_allocation)  # re-normalize
                 processed_allocation = self.allocation_post_processing_alt(noisy_actor_allocation).astype(int)
 
                 self.ddpg_simulation.step(processed_allocation)
-                self.ddpg_simulation.generate_jobs(chance=self.config.new_job_chance)
+                self.ddpg_simulation.generate_jobs(chance=self.config.new_job_chance)  # queue new jobs
 
                 # Add experience into buffer, log and train-------------------------------------------------------------
                 # if sum(processed_allocation) == self.config.num_channels:
@@ -325,14 +315,11 @@ class Runner:
                 estimation_error = returns_estimate - \
                                    (self.ddpg_simulation.rewards[-1] + self.config.gamma * following_returns_estimate)
                 step_errors[step_id] = np.power(estimation_error, 2)
-                # relative_step_errors[step_id] = abs(estimation_error /
-                #                                     (self.ddpg_simulation.rewards[-1] + self.config.gamma * following_returns_estimate))
 
                 self.actor_critic.train()
 
             # logging
             mean_episode_errors[episode_id] = np.mean(step_errors[step_errors != 0])
-            relative_mean_episode_errors[episode_id] = np.mean(relative_step_errors[step_errors != 0])
             ddpg_episode_rewards[episode_id] = np.sum(self.ddpg_simulation.rewards)
 
             # Checkpointing---------------------------------------------------------------------------------------------
@@ -360,7 +347,7 @@ class Runner:
                 self.actor_critic.gradient_magnitude = np.array([], dtype=int)  # Reset log
 
             # Progress print--------------------------------------------------------------------------------------------
-            if episode_id % int(self.config.num_episodes / 100) == 0:
+            if episode_id % max(int(self.config.num_episodes / 100), 1) == 0:
                 completion = np.round((episode_id + 1) / self.config.num_episodes * 100, 1)
                 print('\rProgress:', completion, '%', end='')
 
@@ -368,7 +355,7 @@ class Runner:
 
         # Logging-------------------------------------------------------------------------------------------------------
         with gzip.open(join(self.config.log_path, 'training_rewardestimationcritic.gstor'), 'wb') as file:
-            pickle.dump([mean_episode_errors, relative_mean_episode_errors], file)
+            pickle.dump([mean_episode_errors], file)
         with gzip.open(join(self.config.log_path, 'training_rewardsachieved.gstor'), 'wb') as file:
             pickle.dump(ddpg_episode_rewards, file)
 
@@ -382,19 +369,6 @@ class Runner:
         for episode_id in range(1, self.config.num_episodes):
             mean_episode_errors_smooth[episode_id] = np.mean(mean_episode_errors[max(0, episode_id - 500):episode_id])
         plt.plot(mean_episode_errors_smooth)
-        plt.grid(alpha=0.25)
-        plt.tight_layout()
-
-        plt.figure()
-        plt.title('Critic mean relative cost estimation error')
-        plt.xlabel('Episode')
-        plt.ylabel('Relative mean estimation error')
-        relative_mean_episode_errors_smooth = np.zeros(self.config.num_episodes)
-        relative_mean_episode_errors_smooth[0] = relative_mean_episode_errors[0]
-        for episode_id in range(1, self.config.num_episodes):
-            relative_mean_episode_errors_smooth[episode_id] = np.mean(
-                relative_mean_episode_errors[max(0, episode_id - 500):episode_id])
-        plt.plot(relative_mean_episode_errors_smooth)
         plt.grid(alpha=0.25)
         plt.tight_layout()
 
@@ -432,7 +406,8 @@ class Runner:
         mean_arrival_load = self.config.new_job_chance * (
                 self.config.num_users_normal * self.config.normal_job_size_max / 2 +
                 self.config.num_users_high_datarate * self.config.high_datarate_job_size_max / 2 +
-                self.config.num_users_low_latency * self.config.low_latency_job_size_max)
+                self.config.num_users_low_latency * self.config.low_latency_job_size_max / 2 +
+                self.config.num_users_EV * self.config.EV_job_size_max / 2)
         print('Mean arrival load per resource:', mean_arrival_load / self.config.num_channels)
 
         # Load trained models-------------------------------------------------------------------------------------------
@@ -450,26 +425,31 @@ class Runner:
         actor_critic_datarate_satisfaction_per_episode = np.zeros(self.config.num_episodes)
         actor_critic_latency_violations_per_episode = np.zeros(self.config.num_episodes)
         actor_critic_rewards_per_episode = np.zeros(self.config.num_episodes)
+        actor_critic_ev_latency_violations_per_episode = np.zeros(self.config.num_episodes)
 
         max_throughput_mean_throughput_per_episode = np.zeros(self.config.num_episodes)
         max_throughput_datarate_satisfaction_per_episode = np.zeros(self.config.num_episodes)
         max_throughput_latency_violations_per_episode = np.zeros(self.config.num_episodes)
         max_throughput_rewards_per_episode = np.zeros(self.config.num_episodes)
+        max_throughput_ev_latency_violations_per_episode = np.zeros(self.config.num_episodes)
 
         max_min_fair_mean_throughput_per_episode = np.zeros(self.config.num_episodes)
         max_min_fair_datarate_satisfaction_per_episode = np.zeros(self.config.num_episodes)
         max_min_fair_latency_violations_per_episode = np.zeros(self.config.num_episodes)
         max_min_fair_rewards_per_episode = np.zeros(self.config.num_episodes)
+        max_min_fair_ev_latency_violations_per_episode = np.zeros(self.config.num_episodes)
 
         delay_sensitive_mean_throughput_per_episode = np.zeros(self.config.num_episodes)
         delay_sensitive_datarate_satisfaction_per_episode = np.zeros(self.config.num_episodes)
         delay_sensitive_latency_violations_per_episode = np.zeros(self.config.num_episodes)
         delay_sensitive_rewards_per_episode = np.zeros(self.config.num_episodes)
+        delay_sensitive_ev_latency_violations_per_episode = np.zeros(self.config.num_episodes)
 
         random_sim_mean_throughput_per_episode = np.zeros(self.config.num_episodes)
         random_sim_datarate_sastisfaction_per_episode = np.zeros(self.config.num_episodes)
         random_sim_latency_violations_per_episode = np.zeros(self.config.num_episodes)
         random_sim_rewards_per_episode = np.zeros(self.config.num_episodes)
+        random_sim_ev_latency_violations_per_episode = np.zeros(self.config.num_episodes)
 
         for episode_id in range(self.config.num_episodes):
             # Allocate resources and step simulation--------------------------------------------------------------------
@@ -533,6 +513,8 @@ class Runner:
                 self.ddpg_simulation.jobs_lost)
             actor_critic_rewards_per_episode[episode_id] = np.sum(
                 self.ddpg_simulation.rewards)
+            actor_critic_ev_latency_violations_per_episode[episode_id] = np.sum(
+                self.ddpg_simulation.jobs_lost_EV_only)
 
             max_throughput_mean_throughput_per_episode[episode_id] = np.mean(
                 maximum_throughput_simulation.sum_capacity)
@@ -542,6 +524,8 @@ class Runner:
                 maximum_throughput_simulation.jobs_lost)
             max_throughput_rewards_per_episode[episode_id] = np.sum(
                 maximum_throughput_simulation.rewards)
+            max_throughput_ev_latency_violations_per_episode[episode_id] = np.sum(
+                maximum_throughput_simulation.jobs_lost_EV_only)
 
             max_min_fair_mean_throughput_per_episode[episode_id] = np.mean(
                 max_min_fair_simulation.sum_capacity)
@@ -551,6 +535,8 @@ class Runner:
                 max_min_fair_simulation.jobs_lost)
             max_min_fair_rewards_per_episode[episode_id] = np.sum(
                 max_min_fair_simulation.rewards)
+            max_min_fair_ev_latency_violations_per_episode[episode_id] = np.sum(
+                max_min_fair_simulation.jobs_lost_EV_only)
 
             delay_sensitive_mean_throughput_per_episode[episode_id] = np.mean(
                 delay_sensitive_simulation.sum_capacity)
@@ -560,6 +546,8 @@ class Runner:
                 delay_sensitive_simulation.jobs_lost)
             delay_sensitive_rewards_per_episode[episode_id] = np.sum(
                 delay_sensitive_simulation.rewards)
+            delay_sensitive_ev_latency_violations_per_episode[episode_id] = np.sum(
+                delay_sensitive_simulation.jobs_lost_EV_only)
 
             random_sim_mean_throughput_per_episode[episode_id] = np.mean(
                 random_simulation.sum_capacity)
@@ -569,6 +557,8 @@ class Runner:
                 random_simulation.jobs_lost)
             random_sim_rewards_per_episode[episode_id] = np.sum(
                 random_simulation.rewards)
+            random_sim_ev_latency_violations_per_episode[episode_id] = np.sum(
+                random_simulation.jobs_lost_EV_only)
 
             # Reset simulation for the next episode---------------------------------------------------------------------
             self.ddpg_simulation.reset()
@@ -578,11 +568,17 @@ class Runner:
             random_simulation.reset()
 
             # Progress print--------------------------------------------------------------------------------------------
-            if episode_id % int(self.config.num_episodes / 100) == 0:
+            if episode_id % max(int(self.config.num_episodes / 100), 1) == 0:
                 completion = np.round((episode_id + 1) / self.config.num_episodes * 100, 1)
                 print('\rProgress:', completion, '%', end='')
 
         print('\r ..Done', flush=True)
+        print('AC', np.sum(actor_critic_ev_latency_violations_per_episode) / self.config.num_episodes, '\n' +
+              'MT', np.sum(max_throughput_ev_latency_violations_per_episode) / self.config.num_episodes, '\n' +
+              'MM', np.sum(max_min_fair_ev_latency_violations_per_episode) / self.config.num_episodes, '\n' +
+              'DS', np.sum(delay_sensitive_ev_latency_violations_per_episode) / self.config.num_episodes, '\n' +
+              'RD', np.sum(random_sim_ev_latency_violations_per_episode) / self.config.num_episodes, '\n')
+
         # Logging-------------------------------------------------------------------------------------------------------
         with gzip.open(join(self.config.log_path, 'testing_throughputs.gstor'), 'wb') as file:
             pickle.dump([max_throughput_mean_throughput_per_episode, max_min_fair_mean_throughput_per_episode,
@@ -650,6 +646,18 @@ class Runner:
         plt.grid(alpha=.25, axis='y')
         plt.xticks([0, 1, 2, 3, 4], ['Maximum Throughput', 'Max-Min-Fair', 'Delay Sensitive', 'DDPG', 'Random'])
         plt.ylabel('Mean combined metric per episode')
+        plt.tight_layout()
+
+        fig_timeouts_ev_comparison = plt.figure()
+        plt.title('Timeouts for EV only')
+        plt.bar(0, np.mean(max_throughput_ev_latency_violations_per_episode), color=self.config.ccolor0)
+        plt.bar(1, np.mean(max_min_fair_ev_latency_violations_per_episode), color=self.config.ccolor0)
+        plt.bar(2, np.mean(delay_sensitive_ev_latency_violations_per_episode), color=self.config.ccolor0)
+        plt.bar(3, np.mean(actor_critic_ev_latency_violations_per_episode), color=self.config.ccolor0)
+        plt.bar(4, np.mean(random_sim_ev_latency_violations_per_episode), color=self.config.ccolor0)
+        plt.grid(alpha=.25, axis='y')
+        plt.xticks([0, 1, 2, 3, 4], ['Maximum Throughput', 'Max-Min-Fair', 'Delay Sensitive', 'DDPG', 'Random'])
+        plt.ylabel('Mean EV timeouts per episode')
         plt.tight_layout()
 
         fig_resources_used_count = plt.figure()

@@ -202,6 +202,8 @@ dmypy.json
 *.gstor
 *.bu
 *.h5
+*.zip
+*.gzip
 SavedModels/
 .idea/
 plotting/
