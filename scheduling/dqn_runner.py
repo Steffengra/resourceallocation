@@ -2,6 +2,8 @@ import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 import gzip, pickle
+from os.path import join
+from shutil import copy2
 
 from scheduling.imports.simulation import Simulation
 from scheduling.scheduling_config import Config
@@ -66,17 +68,20 @@ class Runner:
                                                                resources_available=self.config.num_channels)
         elif dqn_action == 1:
             resource_allocation = max_min_fair_scheduler(users=list(self.dqn_simulation.users.values()),
-                                                               resources_available=self.config.num_channels)
+                                                         resources_available=self.config.num_channels)
         elif dqn_action == 2:
             resource_allocation = delay_sensitive_scheduler(users=list(self.dqn_simulation.users.values()),
-                                                               resources_available=self.config.num_channels)
+                                                            resources_available=self.config.num_channels)
+        else:
+            raise ValueError('Invalid dqn.get_action output value')
 
         self.dqn_simulation.step(allocation_vector=resource_allocation)
         self.dqn_simulation.generate_jobs(chance=self.config.new_job_chance)
 
         return dqn_action
 
-    def should_save_cp(self, current_cp_reward, episode_id, best_checkpoint_reward, interval):
+    @staticmethod
+    def should_save_cp(current_cp_reward, episode_id, best_checkpoint_reward, interval):
         cp_improvement = current_cp_reward / best_checkpoint_reward  # improvement in %
         if cp_improvement > 1.01:  # 1% better than the best cp
             # benchmark_improvement = current_cp_reward / self.random_total_rewards[
@@ -87,6 +92,14 @@ class Runner:
         return False
 
     def train(self):
+        # Work load self-check------------------------------------------------------------------------------------------
+        mean_arrival_load = self.config.new_job_chance * (
+                self.config.num_users_per_job['Normal'] * self.config.normal_job_size_max / 2 +
+                self.config.num_users_per_job['High Datarate'] * self.config.high_datarate_job_size_max / 2 +
+                self.config.num_users_per_job['Low Latency'] * self.config.low_latency_job_size_max / 2 +
+                self.config.num_users_per_job['Emergency Vehicle'] * self.config.EV_job_size_max / 2)
+        print('Mean arrival load per resource:', mean_arrival_load / self.config.num_channels)
+
         self.epsilon = self.config.epsilon
 
         checkpoint_counter: int = 0
@@ -152,11 +165,8 @@ class Runner:
             interval = 300
             dqn_avg_rewards_longterm = self.dqn_episode_rewards[max(0, episode_id - interval):(episode_id + 1)].mean()
             if self.should_save_cp(dqn_avg_rewards_longterm, episode_id, best_checkpoint_reward, interval=interval):
-                checkpoint_path = self.config.checkpoint_path + '_cp' + str(checkpoint_counter) + \
-                                  '_' + str(round(dqn_avg_rewards_longterm, 1)) + \
-                                  '_ep' + str(episode_id)
                 self.dqn.q_primary.predict(np.random.rand(len(dqn_state_old))[np.newaxis])
-                self.dqn.q_primary.save(checkpoint_path, save_format='tf')
+                self.dqn.q_primary.save(join(self.config.model_path, 'q_primary', 'cp'), save_format='tf')
 
                 checkpoint_counter += 1
                 best_checkpoint_reward = dqn_avg_rewards_longterm
@@ -168,19 +178,25 @@ class Runner:
         # Load with tf.keras.models.load_model('path')
         # required bc custom model save bug:
         self.dqn.q_primary.predict(np.random.rand(len(dqn_state_old))[np.newaxis])
-        self.dqn.q_primary.save(self.config.model_path, save_format='tf')
+        self.dqn.q_primary.save(join(self.config.model_path, 'q_primary'), save_format='tf')
+
+        # Save associated config----------------------------------------------------------------------------------------
+        copy2('scheduling_config.py', self.config.model_path)
 
     def test(self):
-        self.dqn.q_primary = tf.keras.models.load_model(self.config.model_path)
-        self.epsilon = 0
+        # Work load self-check------------------------------------------------------------------------------------------
+        mean_arrival_load = self.config.new_job_chance * (
+                self.config.num_users_per_job['Normal'] * self.config.normal_job_size_max / 2 +
+                self.config.num_users_per_job['High Datarate'] * self.config.high_datarate_job_size_max / 2 +
+                self.config.num_users_per_job['Low Latency'] * self.config.low_latency_job_size_max / 2 +
+                self.config.num_users_per_job['Emergency Vehicle'] * self.config.EV_job_size_max / 2)
 
-        # Work load self-check
-        mean_arrival_load = self.config.new_job_chance * (self.config.num_users_normal * self.config.normal_job_size_max / 2 +
-                                                     self.config.num_users_high_datarate * self.config.high_datarate_job_size_max / 2 +
-                                                     self.config.num_users_low_latency * self.config.low_latency_job_size_max)
         print('Mean arrival load per resource:', mean_arrival_load / self.config.num_channels)
 
-        # Simulations-----------------------------------------------------------------------------------------------------------
+        self.dqn.q_primary = tf.keras.models.load_model(join(self.config.model_path, 'q_primary'))
+        self.epsilon = 0
+
+        # Simulations---------------------------------------------------------------------------------------------------
         max_throughput_simulation = Simulation(config=self.config)
         max_min_fair_simulation = Simulation(config=self.config)
         delay_sensitive_simulation = Simulation(config=self.config)
@@ -190,21 +206,25 @@ class Runner:
         dqn_datarate_satisfaction_per_episode = np.zeros(self.config.num_episodes)
         dqn_latency_violations_per_episode = np.zeros(self.config.num_episodes)
         dqn_rewards_per_episode = np.zeros(self.config.num_episodes)
+        dqn_ev_latency_violations_per_episode = np.zeros(self.config.num_episodes)
 
         max_throughput_mean_throughput_per_episode = np.zeros(self.config.num_episodes)
         max_throughput_datarate_satisfaction_per_episode = np.zeros(self.config.num_episodes)
         max_throughput_latency_violations_per_episode = np.zeros(self.config.num_episodes)
         max_throughput_rewards_per_episode = np.zeros(self.config.num_episodes)
+        max_throughput_ev_latency_violations_per_episode = np.zeros(self.config.num_episodes)
 
         max_min_fair_mean_throughput_per_episode = np.zeros(self.config.num_episodes)
         max_min_fair_datarate_satisfaction_per_episode = np.zeros(self.config.num_episodes)
         max_min_fair_latency_violations_per_episode = np.zeros(self.config.num_episodes)
         max_min_fair_rewards_per_episode = np.zeros(self.config.num_episodes)
+        max_min_fair_ev_latency_violations_per_episode = np.zeros(self.config.num_episodes)
 
         delay_sensitive_mean_throughput_per_episode = np.zeros(self.config.num_episodes)
         delay_sensitive_datarate_satisfaction_per_episode = np.zeros(self.config.num_episodes)
         delay_sensitive_latency_violations_per_episode = np.zeros(self.config.num_episodes)
         delay_sensitive_rewards_per_episode = np.zeros(self.config.num_episodes)
+        delay_sensitive_ev_latency_violations_per_episode = np.zeros(self.config.num_episodes)
 
         algorithm_counters = np.array([0, 0, 0])
 
@@ -257,18 +277,21 @@ class Runner:
             dqn_datarate_satisfaction_per_episode[episode_id] = np.sum(self.dqn_simulation.datarate_satisfaction)
             dqn_latency_violations_per_episode[episode_id] = np.sum(self.dqn_simulation.jobs_lost)
             dqn_rewards_per_episode[episode_id] = np.sum(self.dqn_simulation.rewards)
+            dqn_ev_latency_violations_per_episode[episode_id] = np.sum(self.dqn_simulation.jobs_lost_EV_only)
 
             max_throughput_mean_throughput_per_episode[episode_id] = np.mean(max_throughput_simulation.sum_capacity)
             max_throughput_datarate_satisfaction_per_episode[episode_id] = np.sum(
                 max_throughput_simulation.datarate_satisfaction)
             max_throughput_latency_violations_per_episode[episode_id] = np.sum(max_throughput_simulation.jobs_lost)
             max_throughput_rewards_per_episode[episode_id] = np.sum(max_throughput_simulation.rewards)
+            max_throughput_ev_latency_violations_per_episode[episode_id] = np.sum(max_throughput_simulation.jobs_lost_EV_only)
 
             max_min_fair_mean_throughput_per_episode[episode_id] = np.mean(max_min_fair_simulation.sum_capacity)
             max_min_fair_datarate_satisfaction_per_episode[episode_id] = np.sum(
                 max_min_fair_simulation.datarate_satisfaction)
             max_min_fair_latency_violations_per_episode[episode_id] = np.sum(max_min_fair_simulation.jobs_lost)
             max_min_fair_rewards_per_episode[episode_id] = np.sum(max_min_fair_simulation.rewards)
+            max_min_fair_ev_latency_violations_per_episode[episode_id] = np.sum(max_min_fair_simulation.jobs_lost_EV_only)
 
             delay_sensitive_mean_throughput_per_episode[episode_id] = np.mean(
                 delay_sensitive_simulation.sum_capacity)
@@ -277,6 +300,7 @@ class Runner:
             delay_sensitive_latency_violations_per_episode[episode_id] = np.sum(
                 delay_sensitive_simulation.jobs_lost)
             delay_sensitive_rewards_per_episode[episode_id] = np.sum(delay_sensitive_simulation.rewards)
+            delay_sensitive_ev_latency_violations_per_episode[episode_id] = np.sum(delay_sensitive_simulation.jobs_lost_EV_only)
 
             # Reset simulation for the next episode---------------------------------------------------------------------
             self.dqn_simulation.reset()
@@ -292,19 +316,20 @@ class Runner:
         print('\r ..Done', flush=True)
 
         # Logging-------------------------------------------------------------------------------------------------------
-        with gzip.open('C:\\Py\\MasterThesis\\resourceallocation\\scheduling\\logs\\testing_dqn_results.gstor', 'wb') as file:
+        join(self.config.log_path, 'testing_algorithm_selection.gstor')
+        with gzip.open(join(self.config.log_path, 'testing_dqn_results.gstor'), 'wb') as file:
             pickle.dump([dqn_mean_throughput_per_episode, dqn_datarate_satisfaction_per_episode,
                          dqn_latency_violations_per_episode, dqn_rewards_per_episode], file)
-        with gzip.open('C:\\Py\\MasterThesis\\resourceallocation\\scheduling\\logs\\testing_max_throughput_results.gstor', 'wb') as file:
+        with gzip.open(join(self.config.log_path, 'testing_max_throughput_results.gstor'), 'wb') as file:
             pickle.dump([max_throughput_mean_throughput_per_episode, max_throughput_datarate_satisfaction_per_episode,
                          max_throughput_latency_violations_per_episode, max_throughput_rewards_per_episode], file)
-        with gzip.open('C:\\Py\\MasterThesis\\resourceallocation\\scheduling\\logs\\testing_maxminfair_results.gstor', 'wb') as file:
+        with gzip.open(join(self.config.log_path, 'testing_maxminfair_results.gstor'), 'wb') as file:
             pickle.dump([max_min_fair_mean_throughput_per_episode, max_min_fair_datarate_satisfaction_per_episode,
                          max_min_fair_latency_violations_per_episode, max_min_fair_rewards_per_episode], file)
-        with gzip.open('C:\\Py\\MasterThesis\\resourceallocation\\scheduling\\logs\\testing_delay_sensitive_results.gstor', 'wb') as file:
+        with gzip.open(join(self.config.log_path, 'testing_delay_sensitive_results.gstor'), 'wb') as file:
             pickle.dump([delay_sensitive_mean_throughput_per_episode, delay_sensitive_datarate_satisfaction_per_episode,
                          delay_sensitive_latency_violations_per_episode, delay_sensitive_rewards_per_episode], file)
-        with gzip.open('C:\\Py\\MasterThesis\\resourceallocation\\scheduling\\logs\\testing_algorithm_selection.gstor', 'wb') as file:
+        with gzip.open(join(self.config.log_path, 'testing_algorithm_selection.gstor'), 'wb') as file:
             pickle.dump(algorithm_counters, file)
 
         # Plotting------------------------------------------------------------------------------------------------------
@@ -358,6 +383,17 @@ class Runner:
         plt.grid(alpha=.25, axis='y')
         plt.xticks([0, 1, 2, 3], ['Maximum Throughput', 'Max-Min-Fair', 'Delay Sensitive', 'DQN Adaptive'])
         plt.ylabel('Mean combined metric per episode')
+        plt.tight_layout()
+
+        fig_timeouts_ev_comparison = plt.figure()
+        plt.title('Timeouts for EV only')
+        plt.bar(0, np.mean(max_throughput_ev_latency_violations_per_episode), color=self.config.ccolor0)
+        plt.bar(1, np.mean(max_min_fair_ev_latency_violations_per_episode), color=self.config.ccolor0)
+        plt.bar(2, np.mean(delay_sensitive_ev_latency_violations_per_episode), color=self.config.ccolor0)
+        plt.bar(3, np.mean(dqn_ev_latency_violations_per_episode), color=self.config.ccolor0)
+        plt.grid(alpha=.25, axis='y')
+        plt.xticks([0, 1, 2, 3], ['Maximum Throughput', 'Max-Min-Fair', 'Delay Sensitive', 'DQN'])
+        plt.ylabel('Mean EV timeouts per episode')
         plt.tight_layout()
 
         plt.show()

@@ -11,16 +11,16 @@ class Simulation:
         self.base_station = BaseStation()
         user_counter = 0
         self.users = dict()
-        for _ in range(config.num_users_normal):
+        for _ in range(config.num_users_per_job['Normal']):
             self.users[user_counter] = UserNormal(pos_base_station=self.base_station.pos, user_id=user_counter)
             user_counter += 1
-        for _ in range(config.num_users_high_datarate):
+        for _ in range(config.num_users_per_job['High Datarate']):
             self.users[user_counter] = UserHighDatarate(pos_base_station=self.base_station.pos, user_id=user_counter)
             user_counter += 1
-        for _ in range(config.num_users_low_latency):
+        for _ in range(config.num_users_per_job['Low Latency']):
             self.users[user_counter] = UserLowLatency(pos_base_station=self.base_station.pos, user_id=user_counter)
             user_counter += 1
-        for _ in range(config.num_users_EV):
+        for _ in range(config.num_users_per_job['Emergency Vehicle']):
             self.users[user_counter] = UserEmergencyVehicle(pos_base_station=self.base_station.pos, user_id=user_counter)
             user_counter += 1
 

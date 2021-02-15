@@ -1,7 +1,13 @@
 
+from os.path import (join, dirname)
+from numpy import floor
+
+
 class Config:
     def __init__(self):
-        self.num_episodes: int = 20_000
+        simulation_title: str = 'algorithm_selection'
+
+        self.num_episodes: int = 25_000
         self.steps_per_episode: int = 50
 
         self.user_snr: float = 20
@@ -10,10 +16,15 @@ class Config:
         self.num_channels: int = 16
         self.new_job_chance: float = .20
 
-        self.num_users_normal: int = 5
-        self.num_users_high_datarate: int = 2
-        self.num_users_low_latency: int = 2
-        self.num_users = self.num_users_normal + self.num_users_high_datarate + self.num_users_low_latency
+        self.num_users_per_job: dict = {'Normal': 5,
+                                        'High Datarate': 2,
+                                        'Low Latency': 2,
+                                        'Emergency Vehicle': 1}
+
+        self.lambda_reward: dict = {'Sum Capacity': .25,
+                                    'Packet Timeouts': 1,
+                                    'Packet Rate': .25,
+                                    'EV Packet Timeouts': 0}
 
         # Normal user profile-------------------
         self.normal_datarate: int = 9
@@ -25,8 +36,12 @@ class Config:
         self.high_datarate_job_size_max: int = 40
         # LowLatency user profile---------------
         self.low_latency_datarate: int = self.normal_datarate
-        self.low_latency_latency: int = 1
-        self.low_latency_job_size_max: int = 20
+        self.low_latency_latency: int = 2
+        self.low_latency_job_size_max: int = int(floor(self.num_channels / 2))
+        # EmergencyVehicle user profile---------
+        self.EV_datarate: int = self.normal_datarate
+        self.EV_latency: int = 1
+        self.EV_job_size_max: int = self.num_channels
 
         # Training Parameters-------------------------------------------------------------------------------------------
         self.num_hidden: list = [300, 300, 300, 300]  # Hidden layers' numbers of nodes
@@ -36,17 +51,13 @@ class Config:
         self.epsilon_decay: float = (self.epsilon - self.epsilon_min) / (0.8 * self.num_episodes)
         self.gamma: float = 0.90  # Future reward discount
         self.loss_function: str = 'mse'  # mse, huber
-        self.learning_rate: float = 10 * 1e-5  # learning rate
+        self.learning_rate: float = 1e-5  # learning rate
         self.lr_min = 0.9 * self.learning_rate  # Minimum learning rate
         self.lr_decay: float = 0  # lr is adjusted every episode linearly, lr_new = lr_old-lr_decay
         self.min_experiences: int = 100  # Min experiences in buffer to start training
         self.max_experiences: int = 10_000  # Max experience buffer size, fifo
         self.batch_size: int = 30  # Training batch size
         self.copy_step: int = 25  # To Target Network
-        self.lambda_reward: tuple = (1, 1, .25)  # Weighting of reward sum components
-
-        self.model_path: str = 'SavedModels\\dqn\\q_primary'  # Path for saving the final trained model
-        self.checkpoint_path: str = 'SavedModels\\dqn\\cps\\q_primary'  # Path for saving checkpoints
 
         # DQN enhancement parameters------------------------------------------------------------------------------------
         self.rainbow: dict = {'Double-Q': True,
@@ -66,6 +77,12 @@ class Config:
         self.prioritization_factors: list = [.5, .5]  # [alpha, beta]
         # Linear increase of "beta", weighting of experiences, toward a max of 1 after x% episodes:
         self.prioritization_factor_gain: float = (1 - self.prioritization_factors[1]) / (0.8 * self.num_episodes)
+
+        # Setup (don't change)------------------------------------------------------------------------------------------
+        self.num_users: int = sum(self.num_users_per_job.values())
+
+        self.model_path: str = join(dirname(__file__), 'SavedModels', simulation_title)
+        self.log_path: str = join(dirname(__file__), 'logs')
 
         # Plotting------------------------------------------------------------------------------------------------------
         # Branding Palette

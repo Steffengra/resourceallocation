@@ -1,6 +1,6 @@
 import gzip
 import pickle
-from os.path import (join, isfile)
+from os.path import join
 from shutil import copy2
 
 import matplotlib.pyplot as plt
@@ -269,10 +269,10 @@ class Runner:
 
         # Work load self-check------------------------------------------------------------------------------------------
         mean_arrival_load = self.config.new_job_chance * (
-                self.config.num_users_normal * self.config.normal_job_size_max / 2 +
-                self.config.num_users_high_datarate * self.config.high_datarate_job_size_max / 2 +
-                self.config.num_users_low_latency * self.config.low_latency_job_size_max / 2 +
-                self.config.num_users_EV * self.config.EV_job_size_max / 2)
+                self.config.num_users_per_job['Normal'] * self.config.normal_job_size_max / 2 +
+                self.config.num_users_per_job['High Datarate'] * self.config.high_datarate_job_size_max / 2 +
+                self.config.num_users_per_job['Low Latency'] * self.config.low_latency_job_size_max / 2 +
+                self.config.num_users_per_job['Emergency Vehicle'] * self.config.EV_job_size_max / 2)
 
         print('Mean arrival load per resource:', mean_arrival_load / self.config.num_channels)
 
@@ -404,10 +404,10 @@ class Runner:
 
         # Work load self-check------------------------------------------------------------------------------------------
         mean_arrival_load = self.config.new_job_chance * (
-                self.config.num_users_normal * self.config.normal_job_size_max / 2 +
-                self.config.num_users_high_datarate * self.config.high_datarate_job_size_max / 2 +
-                self.config.num_users_low_latency * self.config.low_latency_job_size_max / 2 +
-                self.config.num_users_EV * self.config.EV_job_size_max / 2)
+                self.config.num_users_per_job['Normal'] * self.config.normal_job_size_max / 2 +
+                self.config.num_users_per_job['High Datarate'] * self.config.high_datarate_job_size_max / 2 +
+                self.config.num_users_per_job['Low Latency'] * self.config.low_latency_job_size_max / 2 +
+                self.config.num_users_per_job['Emergency Vehicle'] * self.config.EV_job_size_max / 2)
         print('Mean arrival load per resource:', mean_arrival_load / self.config.num_channels)
 
         # Load trained models-------------------------------------------------------------------------------------------

@@ -200,11 +200,11 @@ dmypy.json
 *.pgf
 *.stor
 *.gstor
-*.bu
-*.h5
 *.zip
 *.gzip
+*.bu
+*.h5
 SavedModels/
-.idea/
 plotting/
 venv/*
+.idea/

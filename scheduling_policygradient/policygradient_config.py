@@ -6,7 +6,8 @@ from numpy import floor
 class Config:
     def __init__(self):
         simulation_title: str = 'ddpg'
-        self.num_episodes: int = 25_000
+
+        self.num_episodes: int = 100
         self.steps_per_episode: int = 50
 
         self.user_snr: float = 20
@@ -20,11 +21,10 @@ class Config:
                                     'Packet Rate': .25,
                                     'EV Packet Timeouts': 1}
 
-        self.num_users_normal: int = 5
-        self.num_users_high_datarate: int = 2
-        self.num_users_low_latency: int = 2
-        self.num_users_EV: int = 1
-        self.num_users: int = self.num_users_normal + self.num_users_high_datarate + self.num_users_low_latency + self.num_users_EV
+        self.num_users_per_job: dict = {'Normal': 5,
+                                        'High Datarate': 2,
+                                        'Low Latency': 2,
+                                        'Emergency Vehicle': 1}
 
         # Normal user profile-------------------
         self.normal_datarate: int = 9
@@ -61,6 +61,9 @@ class Config:
         self.min_priority: float = 1e-7  # For Prioritized Experience Replay
         self.prioritization_factors: list = [.5, .5]  # [alpha, beta]
         self.prioritization_factor_gain: float = (1 - self.prioritization_factors[1]) / (0.8 * self.num_episodes)
+
+        # Setup (don't change)------------------------------------------------------------------------------------------
+        self.num_users: int = sum(self.num_users_per_job.values())
 
         self.model_path: str = join(dirname(__file__), 'SavedModels', simulation_title)
         self.log_path: str = join(dirname(__file__), 'logs')

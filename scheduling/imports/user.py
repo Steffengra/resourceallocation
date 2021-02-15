@@ -96,3 +96,15 @@ class UserHighDatarate(User):
         self.latency_max = config.high_datarate_latency
 
         self.job_size_max = config.high_datarate_job_size_max
+
+
+class UserEmergencyVehicle(User):
+    def __init__(self, user_id, pos_base_station):
+        super().__init__(user_id=user_id, pos_base_station=pos_base_station)
+        self.type = 'EmergencyVehicle'
+        config = Config()
+        self.color = config.ccolor4
+        self.datarate_min = config.EV_datarate
+        self.latency_max = config.EV_latency
+
+        self.job_size_max = config.EV_job_size_max
