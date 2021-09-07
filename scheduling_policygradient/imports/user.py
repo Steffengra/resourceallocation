@@ -13,6 +13,7 @@ class User:
         self.color: str = config.ccolor0
 
         self.pos: np.ndarray = np.random.randint(1, 200, 2)
+        self.last_direction: list = [0, 0]
         self.path_loss_exponent: float = config.path_loss_exponent
         self.signal_noise_ratio: float = config.user_snr
 
@@ -60,6 +61,20 @@ class User:
         self.jobs.append(job)
         self.units_requested_lifetime += job.size
         self.update_statistics()
+
+    def grid_move(self, step_size):
+        directions = [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]
+        if any(self.last_direction):  # was last moving, last_direction != [0, 0]
+            if np.random.rand() < 0.98:  # % chance to keep direction
+                self.pos += np.multiply(step_size, self.last_direction)
+                return
+            else:
+                directions.remove([coordinate * -1 for coordinate in self.last_direction])  # no u turn
+
+        directions.remove(self.last_direction)  # dont keep direction
+
+        self.last_direction = directions[np.random.choice(len(directions))]  # roll from remaining directions
+        self.pos += np.multiply(step_size, self.last_direction)  # add step to position
 
 
 class UserNormal(User):

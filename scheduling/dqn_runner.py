@@ -11,6 +11,7 @@ from scheduling.imports.dqn import DQN
 from scheduling.imports.scheduling import maximum_throughput_scheduler
 from scheduling.imports.scheduling import max_min_fair_scheduler
 from scheduling.imports.scheduling import delay_sensitive_scheduler
+from scheduling.imports.scheduling import ev_only_scheduler
 
 
 class Runner:
@@ -20,7 +21,7 @@ class Runner:
         self.epsilon: float = 0
 
         self.dqn_simulation = Simulation(config=self.config)
-        self.dqn = DQN(num_algorithms=3,
+        self.dqn = DQN(num_algorithms=4,
                        size_state=2*self.config.num_users+2,
                        num_hidden=self.config.num_hidden,
                        rainbow=self.config.rainbow,
@@ -72,8 +73,11 @@ class Runner:
         elif dqn_action == 2:
             resource_allocation = delay_sensitive_scheduler(users=list(self.dqn_simulation.users.values()),
                                                             resources_available=self.config.num_channels)
+        elif dqn_action == 3:
+            resource_allocation = ev_only_scheduler(users=list(self.dqn_simulation.users.values()),
+                                                    resources_available=self.config.num_channels)
         else:
-            raise ValueError('Invalid dqn.get_action output value')
+            raise ValueError('Invalid dqn.get_action output value', dqn_action)
 
         self.dqn_simulation.step(allocation_vector=resource_allocation)
         self.dqn_simulation.generate_jobs(chance=self.config.new_job_chance)
@@ -200,6 +204,7 @@ class Runner:
         max_throughput_simulation = Simulation(config=self.config)
         max_min_fair_simulation = Simulation(config=self.config)
         delay_sensitive_simulation = Simulation(config=self.config)
+        ev_only_simulation = Simulation(config=self.config)
 
         # Statistics------------------------------------------------------------------------------------------------------------
         dqn_mean_throughput_per_episode = np.zeros(self.config.num_episodes)
@@ -226,7 +231,13 @@ class Runner:
         delay_sensitive_rewards_per_episode = np.zeros(self.config.num_episodes)
         delay_sensitive_ev_latency_violations_per_episode = np.zeros(self.config.num_episodes)
 
-        algorithm_counters = np.array([0, 0, 0])
+        ev_only_mean_throughput_per_episode = np.zeros(self.config.num_episodes)
+        ev_only_datarate_satisfaction_per_episode = np.zeros(self.config.num_episodes)
+        ev_only_latency_violations_per_episode = np.zeros(self.config.num_episodes)
+        ev_only_rewards_per_episode = np.zeros(self.config.num_episodes)
+        ev_only_ev_latency_violations_per_episode = np.zeros(self.config.num_episodes)
+
+        algorithm_counters = np.array([0, 0, 0, 0])
 
         for episode_id in range(self.config.num_episodes):
             # Simulations-------------------------------------------------------------------------------------------------------
@@ -246,6 +257,10 @@ class Runner:
                     algorithm_counters[2] += 1
                     resource_allocation = delay_sensitive_scheduler(users=list(self.dqn_simulation.users.values()),
                                                                     resources_available=self.config.num_channels)
+                elif dqn_action == 3:
+                    algorithm_counters[3] += 1
+                    resource_allocation = ev_only_scheduler(users=list(self.dqn_simulation.users.values()),
+                                                            resources_available=self.config.num_channels)
 
                 self.dqn_simulation.step(allocation_vector=resource_allocation)
                 self.dqn_simulation.generate_jobs(chance=self.config.new_job_chance)
@@ -271,6 +286,13 @@ class Runner:
                                                               resources_available=self.config.num_channels)
                 delay_sensitive_simulation.step(allocation_vector)
                 delay_sensitive_simulation.generate_jobs(chance=self.config.new_job_chance)
+
+            # EV only Sim
+            for _ in range(self.config.steps_per_episode):
+                allocation_vector = ev_only_scheduler(users=list(ev_only_simulation.users.values()),
+                                                      resources_available=self.config.num_channels)
+                ev_only_simulation.step(allocation_vector)
+                ev_only_simulation.generate_jobs(chance=self.config.new_job_chance)
 
             # Collect statistics----------------------------------------------------------------------------------------
             dqn_mean_throughput_per_episode[episode_id] = np.mean(self.dqn_simulation.sum_capacity)
@@ -302,11 +324,18 @@ class Runner:
             delay_sensitive_rewards_per_episode[episode_id] = np.sum(delay_sensitive_simulation.rewards)
             delay_sensitive_ev_latency_violations_per_episode[episode_id] = np.sum(delay_sensitive_simulation.jobs_lost_EV_only)
 
+            ev_only_mean_throughput_per_episode[episode_id] = np.mean(ev_only_simulation.sum_capacity)
+            ev_only_datarate_satisfaction_per_episode[episode_id] = np.sum(ev_only_simulation.datarate_satisfaction)
+            ev_only_latency_violations_per_episode[episode_id] = np.sum(ev_only_simulation.jobs_lost)
+            ev_only_rewards_per_episode[episode_id] = np.sum(ev_only_simulation.rewards)
+            ev_only_ev_latency_violations_per_episode[episode_id] = np.sum(ev_only_simulation.jobs_lost_EV_only)
+
             # Reset simulation for the next episode---------------------------------------------------------------------
             self.dqn_simulation.reset()
             max_throughput_simulation.reset()
             max_min_fair_simulation.reset()
             delay_sensitive_simulation.reset()
+            ev_only_simulation.reset()
 
             # Progress print--------------------------------------------------------------------------------------------
             if episode_id % int(self.config.num_episodes / 100) == 0:
@@ -318,26 +347,42 @@ class Runner:
         # Logging-------------------------------------------------------------------------------------------------------
         join(self.config.log_path, 'testing_algorithm_selection.gstor')
         with gzip.open(join(self.config.log_path, 'testing_dqn_results.gstor'), 'wb') as file:
-            pickle.dump([dqn_mean_throughput_per_episode, dqn_datarate_satisfaction_per_episode,
-                         dqn_latency_violations_per_episode, dqn_rewards_per_episode], file)
+            pickle.dump([dqn_mean_throughput_per_episode,
+                         dqn_datarate_satisfaction_per_episode,
+                         dqn_latency_violations_per_episode,
+                         dqn_rewards_per_episode,
+                         dqn_ev_latency_violations_per_episode],
+                        file)
         with gzip.open(join(self.config.log_path, 'testing_max_throughput_results.gstor'), 'wb') as file:
-            pickle.dump([max_throughput_mean_throughput_per_episode, max_throughput_datarate_satisfaction_per_episode,
-                         max_throughput_latency_violations_per_episode, max_throughput_rewards_per_episode], file)
+            pickle.dump([max_throughput_mean_throughput_per_episode,
+                         max_throughput_datarate_satisfaction_per_episode,
+                         max_throughput_latency_violations_per_episode,
+                         max_throughput_rewards_per_episode,
+                         max_throughput_ev_latency_violations_per_episode],
+                        file)
         with gzip.open(join(self.config.log_path, 'testing_maxminfair_results.gstor'), 'wb') as file:
-            pickle.dump([max_min_fair_mean_throughput_per_episode, max_min_fair_datarate_satisfaction_per_episode,
-                         max_min_fair_latency_violations_per_episode, max_min_fair_rewards_per_episode], file)
+            pickle.dump([max_min_fair_mean_throughput_per_episode,
+                         max_min_fair_datarate_satisfaction_per_episode,
+                         max_min_fair_latency_violations_per_episode,
+                         max_min_fair_rewards_per_episode,
+                         max_min_fair_ev_latency_violations_per_episode],
+                        file)
         with gzip.open(join(self.config.log_path, 'testing_delay_sensitive_results.gstor'), 'wb') as file:
-            pickle.dump([delay_sensitive_mean_throughput_per_episode, delay_sensitive_datarate_satisfaction_per_episode,
-                         delay_sensitive_latency_violations_per_episode, delay_sensitive_rewards_per_episode], file)
+            pickle.dump([delay_sensitive_mean_throughput_per_episode,
+                         delay_sensitive_datarate_satisfaction_per_episode,
+                         delay_sensitive_latency_violations_per_episode,
+                         delay_sensitive_rewards_per_episode,
+                         delay_sensitive_ev_latency_violations_per_episode],
+                        file)
         with gzip.open(join(self.config.log_path, 'testing_algorithm_selection.gstor'), 'wb') as file:
             pickle.dump(algorithm_counters, file)
 
         # Plotting------------------------------------------------------------------------------------------------------
         fig_dqn_algorithm_selection = plt.figure()
         plt.title('DQN Algorithm Selection')
-        plt.bar([0, 1, 2], algorithm_counters / sum(algorithm_counters))
+        plt.bar([0, 1, 2, 3], algorithm_counters / sum(algorithm_counters))
         plt.grid(alpha=.25, axis='y')
-        plt.xticks([0, 1, 2], ['Maximum Throughput', 'Max-Min-Fair', 'Delay Sensitive'])
+        plt.xticks([0, 1, 2, 3], ['Maximum Throughput', 'Max-Min-Fair', 'Delay Sensitive', 'EV First'])
         plt.ylabel('Percentage selected')
         plt.tight_layout()
 
@@ -347,8 +392,9 @@ class Runner:
         plt.bar(1, np.mean(max_min_fair_mean_throughput_per_episode), color=self.config.ccolor0)
         plt.bar(2, np.mean(delay_sensitive_mean_throughput_per_episode), color=self.config.ccolor0)
         plt.bar(3, np.mean(dqn_mean_throughput_per_episode), color=self.config.ccolor0)
+        plt.bar(4, np.mean(ev_only_mean_throughput_per_episode), color=self.config.ccolor0)
         plt.grid(alpha=.25, axis='y')
-        plt.xticks([0, 1, 2, 3], ['Maximum Throughput', 'Max-Min-Fair', 'Delay Sensitive', 'DQN Adaptive'])
+        plt.xticks([0, 1, 2, 3, 4], ['Maximum Throughput', 'Max-Min-Fair', 'Delay Sensitive', 'DQN Adaptive', 'EV First'])
         plt.ylabel('Normalized Throughput')
         plt.tight_layout()
 
@@ -358,8 +404,9 @@ class Runner:
         plt.bar(1, np.mean(max_min_fair_latency_violations_per_episode), color=self.config.ccolor0)
         plt.bar(2, np.mean(delay_sensitive_latency_violations_per_episode), color=self.config.ccolor0)
         plt.bar(3, np.mean(dqn_latency_violations_per_episode), color=self.config.ccolor0)
+        plt.bar(4, np.mean(ev_only_latency_violations_per_episode), color=self.config.ccolor0)
         plt.grid(alpha=.25, axis='y')
-        plt.xticks([0, 1, 2, 3], ['Maximum Throughput', 'Max-Min-Fair', 'Delay Sensitive', 'DQN Adaptive'])
+        plt.xticks([0, 1, 2, 3, 4], ['Maximum Throughput', 'Max-Min-Fair', 'Delay Sensitive', 'DQN Adaptive', 'EV First'])
         plt.ylabel('Mean violations per episode')
         plt.tight_layout()
 
@@ -369,8 +416,9 @@ class Runner:
         plt.bar(1, np.mean(max_min_fair_datarate_satisfaction_per_episode), color=self.config.ccolor0)
         plt.bar(2, np.mean(delay_sensitive_datarate_satisfaction_per_episode), color=self.config.ccolor0)
         plt.bar(3, np.mean(dqn_datarate_satisfaction_per_episode), color=self.config.ccolor0)
+        plt.bar(4, np.mean(ev_only_datarate_satisfaction_per_episode), color=self.config.ccolor0)
         plt.grid(alpha=.25, axis='y')
-        plt.xticks([0, 1, 2, 3], ['Maximum Throughput', 'Max-Min-Fair', 'Delay Sensitive', 'DQN Adaptive'])
+        plt.xticks([0, 1, 2, 3, 4], ['Maximum Throughput', 'Max-Min-Fair', 'Delay Sensitive', 'DQN Adaptive', 'EV First'])
         plt.ylabel('Mean sum data rate satisfaction per episode')
         plt.tight_layout()
 
@@ -380,8 +428,9 @@ class Runner:
         plt.bar(1, np.mean(max_min_fair_rewards_per_episode), color=self.config.ccolor0)
         plt.bar(2, np.mean(delay_sensitive_rewards_per_episode), color=self.config.ccolor0)
         plt.bar(3, np.mean(dqn_rewards_per_episode), color=self.config.ccolor0)
+        plt.bar(4, np.mean(ev_only_rewards_per_episode), color=self.config.ccolor0)
         plt.grid(alpha=.25, axis='y')
-        plt.xticks([0, 1, 2, 3], ['Maximum Throughput', 'Max-Min-Fair', 'Delay Sensitive', 'DQN Adaptive'])
+        plt.xticks([0, 1, 2, 3, 4], ['Maximum Throughput', 'Max-Min-Fair', 'Delay Sensitive', 'DQN Adaptive', 'EV First'])
         plt.ylabel('Mean combined metric per episode')
         plt.tight_layout()
 
@@ -391,9 +440,8 @@ class Runner:
         plt.bar(1, np.mean(max_min_fair_ev_latency_violations_per_episode), color=self.config.ccolor0)
         plt.bar(2, np.mean(delay_sensitive_ev_latency_violations_per_episode), color=self.config.ccolor0)
         plt.bar(3, np.mean(dqn_ev_latency_violations_per_episode), color=self.config.ccolor0)
+        plt.bar(4, np.mean(ev_only_ev_latency_violations_per_episode), color=self.config.ccolor0)
         plt.grid(alpha=.25, axis='y')
-        plt.xticks([0, 1, 2, 3], ['Maximum Throughput', 'Max-Min-Fair', 'Delay Sensitive', 'DQN'])
+        plt.xticks([0, 1, 2, 3, 4], ['Maximum Throughput', 'Max-Min-Fair', 'Delay Sensitive', 'DQN Adaptive', 'EV First'])
         plt.ylabel('Mean EV timeouts per episode')
         plt.tight_layout()
-
-        plt.show()

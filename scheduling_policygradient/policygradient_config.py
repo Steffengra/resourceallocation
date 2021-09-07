@@ -7,7 +7,7 @@ class Config:
     def __init__(self):
         simulation_title: str = 'ddpg'
 
-        self.num_episodes: int = 100
+        self.num_episodes: int = 25_000
         self.steps_per_episode: int = 50
 
         self.user_snr: float = 20
@@ -16,15 +16,15 @@ class Config:
         self.num_channels: int = 16
         self.new_job_chance: float = .20
 
-        self.lambda_reward: dict = {'Sum Capacity': .25,
-                                    'Packet Timeouts': 1,
-                                    'Packet Rate': .25,
-                                    'EV Packet Timeouts': 1}
-
         self.num_users_per_job: dict = {'Normal': 5,
                                         'High Datarate': 2,
                                         'Low Latency': 2,
                                         'Emergency Vehicle': 1}
+
+        self.lambda_reward: dict = {'Sum Capacity': .5,
+                                    'Packet Timeouts': 1,
+                                    'Packet Rate': .25,
+                                    'EV Packet Timeouts': .25}
 
         # Normal user profile-------------------
         self.normal_datarate: int = 9

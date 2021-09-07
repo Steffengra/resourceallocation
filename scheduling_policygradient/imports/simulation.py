@@ -119,6 +119,9 @@ class Simulation:
             # Roll new channel according to position, fading------------------------------------------------------------
             user.update_channel_quality(pos_base_station=self.base_station.pos)
 
+            # Move user to new position---------------------------------------------------------------------------------
+            user.grid_move(step_size=1)
+
         self.sum_capacity = np.append(self.sum_capacity, sum_capacity)
         self.jobs_lost = np.append(self.jobs_lost, jobs_lost)
         self.datarate_satisfaction = np.append(self.datarate_satisfaction, datarate_satisfaction)

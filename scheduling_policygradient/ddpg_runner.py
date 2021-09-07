@@ -596,6 +596,10 @@ class Runner:
             pickle.dump([max_throughput_rewards_per_episode, max_min_fair_rewards_per_episode,
                          delay_sensitive_rewards_per_episode, actor_critic_rewards_per_episode,
                          random_sim_rewards_per_episode], file)
+        with gzip.open(join(self.config.log_path, 'testing_ev_latencyviolations.gstor'), 'wb') as file:
+            pickle.dump([max_throughput_ev_latency_violations_per_episode, max_min_fair_ev_latency_violations_per_episode,
+                         delay_sensitive_ev_latency_violations_per_episode, actor_critic_ev_latency_violations_per_episode,
+                         random_sim_ev_latency_violations_per_episode], file)
         with gzip.open(join(self.config.log_path, 'testing_resources_used.gstor'), 'wb') as file:
             pickle.dump(actor_resources_used, file)
 

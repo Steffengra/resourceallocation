@@ -171,3 +171,38 @@ def delay_sensitive_scheduler(users, resources_available):
 
     # resource_allocation = resource_allocation / resources_total
     return resource_allocation
+
+
+def ev_only_scheduler(users, resources_available):
+    resource_allocation = np.zeros(len(users))
+
+    # Determine who is requesting, are they an EV?
+    request_ids = []
+    for user in users:
+        if (user.type == 'EmergencyVehicle') and (user.units_requested > 0):  # ev requesting
+            request_ids.append(2)
+        elif (user.type != 'EmergencyVehicle') and (user.units_requested > 0):  # non-ev requesting
+            request_ids.append(1)
+        else:  # not ev or not requesting
+            request_ids.append(0)
+
+    # Allocate resources to EV type vehicles first, then to everyone else at random
+    while (sum(request_ids) > 0) and (resources_available > 0):
+        if 2 in request_ids:  # one or more evs requesting
+            next_allocation_id = int(np.argmax(request_ids))  # select the first one
+            resources_requested = users[next_allocation_id].units_requested
+            resources_allocated = min(resources_requested, resources_available)
+            resource_allocation[next_allocation_id] = resources_allocated
+
+            resources_available -= resources_allocated
+            request_ids[next_allocation_id] = 0
+        else:  # no evs requesting, select from remaining requesting users at random, allocate 1 resource
+            ids_requesting = [list_id for list_id, list_value in enumerate(request_ids) if list_value == 1]
+            next_allocation_id = np.random.choice(ids_requesting)
+
+            resource_allocation[next_allocation_id] += 1
+            resources_available -= 1
+            if users[next_allocation_id].units_requested - resource_allocation[next_allocation_id] == 0:
+                request_ids[next_allocation_id] = 0
+
+    return resource_allocation

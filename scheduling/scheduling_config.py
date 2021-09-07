@@ -21,10 +21,10 @@ class Config:
                                         'Low Latency': 2,
                                         'Emergency Vehicle': 1}
 
-        self.lambda_reward: dict = {'Sum Capacity': .25,
+        self.lambda_reward: dict = {'Sum Capacity': .5,
                                     'Packet Timeouts': 1,
                                     'Packet Rate': .25,
-                                    'EV Packet Timeouts': 0}
+                                    'EV Packet Timeouts': .25}
 
         # Normal user profile-------------------
         self.normal_datarate: int = 9
