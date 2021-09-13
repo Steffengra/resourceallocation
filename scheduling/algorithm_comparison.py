@@ -6,13 +6,14 @@ from scheduling.scheduling_config import Config
 from scheduling.imports.scheduling import maximum_throughput_scheduler
 from scheduling.imports.scheduling import max_min_fair_scheduler
 from scheduling.imports.scheduling import delay_sensitive_scheduler
+from scheduling.imports.scheduling import ev_only_scheduler
 
 config = Config()
 
 # Work load self-check
-mean_arrival_load = config.new_job_chance * (config.num_users_normal * config.normal_job_size_max / 2 +
-                                             config.num_users_high_datarate * config.high_datarate_job_size_max / 2 +
-                                             config.num_users_low_latency * config.low_latency_job_size_max)
+mean_arrival_load = config.new_job_chance * (config.num_users_per_job['Normal'] * config.normal_job_size_max / 2 +
+                                             config.num_users_per_job['High Datarate'] * config.high_datarate_job_size_max / 2 +
+                                             config.num_users_per_job['Low Latency'] * config.low_latency_job_size_max)
 print('Mean arrival load per resource:', mean_arrival_load / config.num_channels)
 
 # Simulations-----------------------------------------------------------------------------------------------------------
@@ -24,14 +25,20 @@ delay_sensitive_simulation = Simulation(config=config)
 max_throughput_mean_throughput_per_episode = np.zeros(config.num_episodes)
 max_throughput_datarate_satisfaction_per_episode = np.zeros(config.num_episodes)
 max_throughput_latency_violations_per_episode = np.zeros(config.num_episodes)
+max_throughput_latency_violations_ev_only_per_episode = np.zeros(config.num_episodes)
+max_throughput_rewards_per_episode = np.zeros(config.num_episodes)
 
 max_min_fair_mean_throughput_per_episode = np.zeros(config.num_episodes)
 max_min_fair_datarate_satisfaction_per_episode = np.zeros(config.num_episodes)
 max_min_fair_latency_violations_per_episode = np.zeros(config.num_episodes)
+max_min_fair_latency_violations_ev_only_per_episode = np.zeros(config.num_episodes)
+max_min_fair_rewards_per_episode = np.zeros(config.num_episodes)
 
 delay_sensitive_mean_throughput_per_episode = np.zeros(config.num_episodes)
 delay_sensitive_datarate_satisfaction_per_episode = np.zeros(config.num_episodes)
 delay_sensitive_latency_violations_per_episode = np.zeros(config.num_episodes)
+delay_sensitive_latency_violations_ev_only_per_episode = np.zeros(config.num_episodes)
+delay_sensitive_rewards_per_episode = np.zeros(config.num_episodes)
 
 for episode_id in range(config.num_episodes):
     # Simulations-------------------------------------------------------------------------------------------------------
@@ -77,14 +84,20 @@ for episode_id in range(config.num_episodes):
     max_throughput_mean_throughput_per_episode[episode_id] = np.mean(max_throughput_simulation.sum_capacity)
     max_throughput_datarate_satisfaction_per_episode[episode_id] = np.sum(max_throughput_simulation.datarate_satisfaction)
     max_throughput_latency_violations_per_episode[episode_id] = np.sum(max_throughput_simulation.jobs_lost)
+    max_throughput_latency_violations_ev_only_per_episode[episode_id] = np.sum(max_throughput_simulation.jobs_lost_EV_only)
+    max_throughput_rewards_per_episode[episode_id] = np.mean(max_throughput_simulation.rewards)
 
     max_min_fair_mean_throughput_per_episode[episode_id] = np.mean(max_min_fair_simulation.sum_capacity)
     max_min_fair_datarate_satisfaction_per_episode[episode_id] = np.sum(max_min_fair_simulation.datarate_satisfaction)
     max_min_fair_latency_violations_per_episode[episode_id] = np.sum(max_min_fair_simulation.jobs_lost)
+    max_min_fair_latency_violations_ev_only_per_episode[episode_id] = np.sum(max_min_fair_simulation.jobs_lost_EV_only)
+    max_min_fair_rewards_per_episode[episode_id] = np.mean(max_min_fair_simulation.rewards)
 
     delay_sensitive_mean_throughput_per_episode[episode_id] = np.mean(delay_sensitive_simulation.sum_capacity)
     delay_sensitive_datarate_satisfaction_per_episode[episode_id] = np.sum(delay_sensitive_simulation.datarate_satisfaction)
     delay_sensitive_latency_violations_per_episode[episode_id] = np.sum(delay_sensitive_simulation.jobs_lost)
+    delay_sensitive_latency_violations_ev_only_per_episode[episode_id] = np.sum(delay_sensitive_simulation.jobs_lost_EV_only)
+    delay_sensitive_rewards_per_episode[episode_id] = np.mean(delay_sensitive_simulation.rewards)
 
     # Reset simulation for the next episode-----------------------------------------------------------------------------
     max_throughput_simulation.reset()
@@ -139,5 +152,32 @@ plt.grid(alpha=.25, axis='y')
 plt.xticks([0, 1, 2], ['Maximum Throughput', 'Max-Min-Fair', 'Delay Sensitive'])
 plt.ylabel('Mean sum data rate satisfaction per episode')
 plt.tight_layout()
+
+fig_ev_timeouts, ax_ev_timeouts = plt.subplots()
+ax_ev_timeouts.set_title('EV timeouts')
+for sched_id, results in enumerate(
+        [
+            max_throughput_latency_violations_ev_only_per_episode,
+            max_min_fair_latency_violations_ev_only_per_episode,
+            delay_sensitive_latency_violations_ev_only_per_episode
+        ]
+):
+    ax_ev_timeouts.bar(sched_id, np.mean(results), yerr=np.var(results))
+ax_ev_timeouts.grid(alpha=.25, axis='y')
+ax_ev_timeouts.set_xticks([0, 1, 2])
+ax_ev_timeouts.set_xticklabels(['Maximum Throughput', 'Max-Min-Fair', 'Delay Sensitive'])
+ax_ev_timeouts.set_ylabel('Mean ev timeouts per episode')
+fig_ev_timeouts.tight_layout()
+
+fig_rewards, ax_rewards = plt.subplots()
+ax_rewards.set_title('Rewards')
+ax_rewards.bar(0, np.mean(max_throughput_rewards_per_episode), yerr=np.var(max_throughput_rewards_per_episode))
+ax_rewards.bar(1, np.mean(max_min_fair_rewards_per_episode), yerr=np.var(max_min_fair_rewards_per_episode))
+ax_rewards.bar(2, np.mean(delay_sensitive_rewards_per_episode), yerr=np.var(delay_sensitive_rewards_per_episode))
+ax_rewards.grid(alpha=.25, axis='y')
+ax_rewards.set_xticks([0, 1, 2])
+ax_rewards.set_xticklabels(['Maximum Throughput', 'Max-Min-Fair', 'Delay Sensitive'])
+ax_rewards.set_ylabel('Mean rewards per episode')
+fig_rewards.tight_layout()
 
 plt.show()

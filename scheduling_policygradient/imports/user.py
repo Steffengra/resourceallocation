@@ -36,7 +36,7 @@ class User:
         self.jobs_lost_to_timeout: int = 0
 
     def update_channel_quality(self, pos_base_station):
-        rayleigh_fading = abs((1 * np.random.randn() + 0) + 1j * (1 * np.random.randn() + 0))
+        rayleigh_fading = abs((1 * np.random.randn() + 0) + 1j * (1 * np.random.randn() + 0))**2
 
         distance_to_base_station = np.sqrt(np.sum(np.power(self.pos - pos_base_station, 2)))
         path_loss = max(1, np.power(distance_to_base_station, self.path_loss_exponent))

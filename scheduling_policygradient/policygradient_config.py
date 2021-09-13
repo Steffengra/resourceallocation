@@ -5,9 +5,9 @@ from numpy import floor
 
 class Config:
     def __init__(self):
-        simulation_title: str = 'ddpg'
+        simulation_title: str = 'ddpg_2'
 
-        self.num_episodes: int = 25_000
+        self.num_episodes: int = 10_000
         self.steps_per_episode: int = 50
 
         self.user_snr: float = 20
@@ -21,10 +21,10 @@ class Config:
                                         'Low Latency': 2,
                                         'Emergency Vehicle': 1}
 
-        self.lambda_reward: dict = {'Sum Capacity': .5,
-                                    'Packet Timeouts': 1,
+        self.lambda_reward: dict = {'Sum Capacity': .25,
                                     'Packet Rate': .25,
-                                    'EV Packet Timeouts': .25}
+                                    'Packet Timeouts': 1,
+                                    'EV Packet Timeouts': 1}
 
         # Normal user profile-------------------
         self.normal_datarate: int = 9
