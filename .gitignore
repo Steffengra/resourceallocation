@@ -208,3 +208,5 @@ SavedModels/
 plotting/
 venv/*
 .idea/
+
+test?.py
