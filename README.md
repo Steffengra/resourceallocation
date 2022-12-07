@@ -21,4 +21,3 @@ The structure is as follows:
 ├─ README.md            | this file
 ├─ requirements.txt     | python packages & versions used
 ```
-
