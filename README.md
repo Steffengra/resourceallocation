@@ -8,23 +8,16 @@ The `scheduling` folder contains the code for `[1]`, while `scheduling_policygra
 
 The structure is as follows:
 
-| Item                  | Description                              |
-|-----------------------|------------------------------------------|
-| `/`                   |                                          |
-| `├─ [proj_name]/`     | project folder                           |
-| `│  ├─ imports/`      | contains python modules for import       |
-| `│  ├─ *_config.py`   | contains config for this project         |
-| `│  ├─ *_runner.py`   | orchestrates training and testing        |
-| `│  ├─ *_test.py`     | wrappers for testing a trained scheduler |
-| `│  ├─ *_train.py`    | wrappers for training a scheduler        |
-| `├─ .gitignore`       | .gitignore                               |
-| `├─ README.md`        | this file                                |
-| `├─ requirements.txt` | python packages & versions used          |
-
 ```
 /
-├─ [proj_name]/    | project folder
-│  ├─ imports/     | contains python modules for import
-│  ├─ *_config.py  | contains config for this project
+├─ [proj_name]/         | project folder
+│  ├─ imports/          | contains python modules for import
+│  ├─ *_config.py       | contains config for this project
+│  ├─ *_runner.py       | orchestrates training and testing
+│  ├─ *_test.py         | wrappers for testing a trained scheduler
+│  ├─ *_train.py        | wrappers for training a scheduler
+├─ .gitignore           | .gitignore
+├─ README.md            | this file
+├─ requirements.txt     | python packages & versions used
 ```
 
