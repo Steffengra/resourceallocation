@@ -13,7 +13,7 @@ The structure is as follows:
 | `/`                   |                                          |
 | `├─ [proj_name]/`     | project folder                           |
 | `│  ├─ imports/`      | contains python modules for import       |
-| `│  ├─ *_config.py`   | contains config files for this project   |
+| `│  ├─ *_config.py`   | contains config for this project         |
 | `│  ├─ *_runner.py`   | orchestrates training and testing        |
 | `│  ├─ *_test.py`     | wrappers for testing a trained scheduler |
 | `│  ├─ *_train.py`    | wrappers for training a scheduler        |
@@ -25,5 +25,6 @@ The structure is as follows:
 /
 ├─ [proj_name]/    | project folder
 │  ├─ imports/     | contains python modules for import
+│  ├─ *_config.py  | contains config for this project
 ```
 
