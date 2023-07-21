@@ -15,6 +15,8 @@ in *Proc. ICC 2022 - IEEE International Conference on Communications*,
 Seoul/Online, South Korea, 16. - 20. May 2022,
 pp. 4480-4485, doi: [10.1109/ICC45855.2022.9838349](https://doi.org/10.1109/ICC45855.2022.9838349).
 
+Email: {**gracla**, beck, bockelmann, dekorsy}@ant.uni-bremen.de
+
 The `scheduling` folder contains the code for [1], while `scheduling_policygradient` contains the code for [2].
 
 The structure is as follows:
