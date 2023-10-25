@@ -1,3 +1,5 @@
+
+from pathlib import Path
 import numpy as np
 
 
@@ -41,9 +43,12 @@ class Config:
         # Weighting of sum-rate capacity (1) and timing constraint (2),
         # 1/(2*max_timing_constraint) has proven good for (2)
 
-        self.model_path: str = 'SavedModels\\reinforcement_1\\q_primary'  # Path for saving the final trained model
-        self.checkpoint_path: str = 'SavedModels\\reinforcement_1\\cps\\q_primary'  # Path for saving checkpoints
+        self.project_root: Path = Path(Path(__file__)).parent.parent
+        self.model_path: Path = Path(self.project_root, 'reinforcement', 'SavedModels', 'reinforcement_1', 'q_primary')  # Path for saving the final trained model
+        self.checkpoint_path: Path = Path(self.project_root, 'reinforcement', 'SavedModels', 'reinforcement_1', 'cps', 'q_primary')  # Path for saving checkpoints
 
+        self.model_path.mkdir(parents=True, exist_ok=True)
+        self.checkpoint_path.mkdir(parents=True, exist_ok=True)
         # DQN enhancement parameters------------------------------------------------------------------------------------
         self.rainbow: dict = {'Double-Q': True,
                               'DuelingDQN': True,

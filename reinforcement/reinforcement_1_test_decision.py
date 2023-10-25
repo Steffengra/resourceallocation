@@ -1,15 +1,21 @@
+
+from pathlib import Path
+
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib as mpl
 import tensorflow as tf
 import gzip, pickle
+
+from reinforcement.reinforcement_1_config import Config
 
 
 num_tests = 100_000
 
 
 def main():
-    q_primary = tf.keras.models.load_model('SavedModels\\reinforcement_1\\q_primary')
+    config = Config()
+
+    q_primary = tf.keras.models.load_model(Path(config.project_root, 'reinforcement', 'SavedModels', 'reinforcement_1', 'q_primary'))
     csis = np.zeros(num_tests)
     choices = np.zeros(num_tests)
 
@@ -28,11 +34,9 @@ def main():
     plt.scatter(csis, choices)
     plt.show()
 
-    with gzip.open('C:\\Py\\MasterThesis\\resourceallocation\\reinforcement\\logs\\testing_policy_csis.gstor',
-                   'wb') as file:
+    with gzip.open(Path(config.project_root, 'reinforcement', 'logs', 'testing_policy_csis.gstor'), 'wb') as file:
         pickle.dump(csis, file)
-    with gzip.open('C:\\Py\\MasterThesis\\resourceallocation\\reinforcement\\logs\\testing_policy_choices.gstor',
-                   'wb') as file:
+    with gzip.open(Path(config.project_root, 'reinforcement', 'logs', 'testing_policy_choices.gstor'), 'wb') as file:
         pickle.dump(choices, file)
 
 

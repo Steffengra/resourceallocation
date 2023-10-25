@@ -1,5 +1,9 @@
+
+import gzip
+import pickle
+from pathlib import Path
+
 import numpy as np
-import pickle, gzip
 
 from supervised.imports.wmmse import wmmse
 
@@ -27,7 +31,7 @@ def create_csi(num_channels, type):
     return h_csi
 
 
-def generate_dataset(num_channels, channel_type, P_max, N_iter, filename, compress):
+def generate_dataset(num_channels, channel_type, P_max, N_iter, filepath):
     h_csi = []
     P_per_channel = []
     iterations_per_step = np.zeros(N_iter)
@@ -54,16 +58,12 @@ def generate_dataset(num_channels, channel_type, P_max, N_iter, filename, compre
     dataset = [np.array(h_csi, dtype=np.float32),
                np.array(P_per_channel, dtype=np.float32)]
 
-    # Save dataset
-    if compress:
-        f = gzip.open(filename + '.gstor', 'wb')
-    else:
-        f = open(filename + '.stor', 'wb')
+    f = gzip.open(filepath, 'wb')
     pickle.dump(dataset, f)
     f.close()
 
     # Save log data
-    with gzip.open('C:\\Py\\MasterThesis\\resourceallocation\\supervised\\logs\\num_iterations_wmmse.gstor', 'wb') as file:
+    with gzip.open(Path(Path(__file__), 'logs', 'num_iterations_wmmse.gstor'), 'wb') as file:
         pickle.dump(iterations_per_step, file)
 
 
@@ -72,8 +72,5 @@ channel_type = 'rayleigh'  # {'rayleigh', 'gaussian'}
 P_max = 1  # Per Channel
 N_iter = 5_000_000
 name = 'wmmse'
-filename = 'C:\\Py\\MasterThesis\\resourceallocation\\supervised\\datasets\\dataset_' + name + '_' + channel_type + '_C' + str(
-    num_channels) + '_P' + str(P_max)
-compress = True
-generate_dataset(num_channels=num_channels, channel_type=channel_type, P_max=P_max, N_iter=N_iter, filename=filename,
-                 compress=compress)
+filepath = Path(Path(__file__), 'datasets', f'dataset_{name}_{channel_type}_C{num_channels}_P{P_max}.gstor')
+generate_dataset(num_channels=num_channels, channel_type=channel_type, P_max=P_max, N_iter=N_iter, filepath=filepath)

@@ -1,8 +1,13 @@
+
+import gzip
+import pickle
+from pathlib import Path
+
 import numpy as np
 import tensorflow as tf
-import pickle, gzip
 
 from supervised.imports.wmmse import wmmse
+
 
 P_max = 1
 num_channels = 10
@@ -59,7 +64,7 @@ def post_processor(p_alloc, p_max):
     return p_alloc_processed
 
 
-model = tf.keras.models.load_model('SavedModels\\dnn1keras')  # Load model
+model = tf.keras.models.load_model(Path(Path(__file__), 'SavedModels', 'dnn1keras'))  # Load model
 # Generate data set-----------------------------------------------------------------------------------------------------
 csis = []
 csis_padded = []
@@ -92,9 +97,9 @@ for ii in range(len(y_pred)):
 print('\rCalculating throughputs.. done')
 
 # Log throughput
-with gzip.open('C:\\Py\\MasterThesis\\resourceallocation\\supervised\\logs\\throughput_model_half_user.gstor', 'wb') as file:
+with gzip.open(Path(Path(__file__), 'logs', 'throughput_model_half_user.gstor'), 'wb') as file:
     pickle.dump(Throughput_dnn, file)
-with gzip.open('C:\\Py\\MasterThesis\\resourceallocation\\supervised\\logs\\throughput_model_postprocessed_half_user.gstor', 'wb') as file:
+with gzip.open(Path(Path(__file__), 'logs', 'throughput_model_postprocessed_half_user.gstor'), 'wb') as file:
     pickle.dump(Throughput_dnn_postprocessed, file)
-with gzip.open('C:\\Py\\MasterThesis\\resourceallocation\\supervised\\logs\\throughput_wmmse_half_user.gstor', 'wb') as file:
+with gzip.open(Path(Path(__file__), 'logs', 'throughput_wmmse_half_user.gstor'), 'wb') as file:
     pickle.dump(Throughput_wmmse, file)

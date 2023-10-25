@@ -1,6 +1,7 @@
+
 import gzip
 import pickle
-from os.path import join
+from pathlib import Path
 from shutil import copy2
 
 import matplotlib.pyplot as plt
@@ -327,7 +328,7 @@ class Runner:
                 self.actor_critic.actor_primary.predict(
                     np.random.rand(len(state_old))[np.newaxis])
                 self.actor_critic.actor_primary.save(
-                    join(self.config.model_path, 'actor', 'cp'), save_format='tf')
+                    Path(self.config.model_path, 'actor', 'cp'), save_format='tf')
 
             # Reset simulation for the next episode---------------------------------------------------------------------
             self.ddpg_simulation.reset()
@@ -354,9 +355,9 @@ class Runner:
         print('\r ..Done', flush=True)
 
         # Logging-------------------------------------------------------------------------------------------------------
-        with gzip.open(join(self.config.log_path, 'training_rewardestimationcritic.gstor'), 'wb') as file:
+        with gzip.open(Path(self.config.log_path, 'training_rewardestimationcritic.gstor'), 'wb') as file:
             pickle.dump([mean_episode_errors], file)
-        with gzip.open(join(self.config.log_path, 'training_rewardsachieved.gstor'), 'wb') as file:
+        with gzip.open(Path(self.config.log_path, 'training_rewardsachieved.gstor'), 'wb') as file:
             pickle.dump(ddpg_episode_rewards, file)
 
         # Plotting------------------------------------------------------------------------------------------------------
@@ -390,11 +391,11 @@ class Runner:
         # required bc custom model save bug:
         self.actor_critic.q_primary.predict(
             np.random.rand(len(processed_allocation) + len(state_old))[np.newaxis])
-        self.actor_critic.q_primary.save(join(self.config.model_path, 'q_primary'), save_format='tf')
+        self.actor_critic.q_primary.save(Path(self.config.model_path, 'q_primary'), save_format='tf')
 
         self.actor_critic.actor_primary.predict(
             np.random.rand(len(state_old))[np.newaxis])
-        self.actor_critic.actor_primary.save(join(self.config.model_path, 'actor'), save_format='tf')
+        self.actor_critic.actor_primary.save(Path(self.config.model_path, 'actor'), save_format='tf')
 
         # Save associated config----------------------------------------------------------------------------------------
         copy2('policygradient_config.py', self.config.model_path)
@@ -411,7 +412,7 @@ class Runner:
         print('Mean arrival load per resource:', mean_arrival_load / self.config.num_channels)
 
         # Load trained models-------------------------------------------------------------------------------------------
-        actor = tf.keras.models.load_model(join(self.config.model_path, 'actor'))
+        actor = tf.keras.models.load_model(Path(self.config.model_path, 'actor'))
 
         # Set up comparison setups--------------------------------------------------------------------------------------
         maximum_throughput_simulation = Simulation(config=self.config)
@@ -580,27 +581,27 @@ class Runner:
               'RD', np.sum(random_sim_ev_latency_violations_per_episode) / self.config.num_episodes, '\n')
 
         # Logging-------------------------------------------------------------------------------------------------------
-        with gzip.open(join(self.config.log_path, 'testing_throughputs.gstor'), 'wb') as file:
+        with gzip.open(Path(self.config.log_path, 'testing_throughputs.gstor'), 'wb') as file:
             pickle.dump([max_throughput_mean_throughput_per_episode, max_min_fair_mean_throughput_per_episode,
                          delay_sensitive_mean_throughput_per_episode, actor_critic_mean_throughput_per_episode,
                          random_sim_mean_throughput_per_episode], file)
-        with gzip.open(join(self.config.log_path, 'testing_latencyviolations.gstor'), 'wb') as file:
+        with gzip.open(Path(self.config.log_path, 'testing_latencyviolations.gstor'), 'wb') as file:
             pickle.dump([max_throughput_latency_violations_per_episode, max_min_fair_latency_violations_per_episode,
                          delay_sensitive_latency_violations_per_episode, actor_critic_latency_violations_per_episode,
                          random_sim_latency_violations_per_episode], file)
-        with gzip.open(join(self.config.log_path, 'testing_dataratesat.gstor'), 'wb') as file:
+        with gzip.open(Path(self.config.log_path, 'testing_dataratesat.gstor'), 'wb') as file:
             pickle.dump([max_throughput_datarate_satisfaction_per_episode, max_min_fair_datarate_satisfaction_per_episode,
                          delay_sensitive_datarate_satisfaction_per_episode, actor_critic_datarate_satisfaction_per_episode,
                          random_sim_datarate_sastisfaction_per_episode], file)
-        with gzip.open(join(self.config.log_path, 'testing_rewards.gstor'), 'wb') as file:
+        with gzip.open(Path(self.config.log_path, 'testing_rewards.gstor'), 'wb') as file:
             pickle.dump([max_throughput_rewards_per_episode, max_min_fair_rewards_per_episode,
                          delay_sensitive_rewards_per_episode, actor_critic_rewards_per_episode,
                          random_sim_rewards_per_episode], file)
-        with gzip.open(join(self.config.log_path, 'testing_ev_latencyviolations.gstor'), 'wb') as file:
+        with gzip.open(Path(self.config.log_path, 'testing_ev_latencyviolations.gstor'), 'wb') as file:
             pickle.dump([max_throughput_ev_latency_violations_per_episode, max_min_fair_ev_latency_violations_per_episode,
                          delay_sensitive_ev_latency_violations_per_episode, actor_critic_ev_latency_violations_per_episode,
                          random_sim_ev_latency_violations_per_episode], file)
-        with gzip.open(join(self.config.log_path, 'testing_resources_used.gstor'), 'wb') as file:
+        with gzip.open(Path(self.config.log_path, 'testing_resources_used.gstor'), 'wb') as file:
             pickle.dump(actor_resources_used, file)
 
         # Plotting------------------------------------------------------------------------------------------------------

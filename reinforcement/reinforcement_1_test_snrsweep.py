@@ -1,7 +1,10 @@
+
+from pathlib import Path
+import gzip
+import pickle
+
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib as mpl
-import gzip, pickle
 
 from reinforcement.reinforcement_1_config import Config
 from reinforcement.reinforcement_1_runner import Runner
@@ -59,13 +62,13 @@ def main():
         if (simulation_id + 1) % 2 == 0:
             print(str(simulation_id + 1) + " / " + str(num_simulations))
 
-    with gzip.open('C:\\Py\\MasterThesis\\resourceallocation\\reinforcement\\logs\\snrsweep_testing_mean_episode_rewards_dqn.gstor', 'wb') as file:
+    with gzip.open(Path(config.project_root, 'reinforcement', 'Logs', 'snrsweep_testing_mean_episode_rewards_dqn.gstor'), 'wb') as file:
         pickle.dump(dqn_mean_reward, file)
-    with gzip.open('C:\\Py\\MasterThesis\\resourceallocation\\reinforcement\\logs\\snrsweep_testing_mean_episode_rewards_random.gstor', 'wb') as file:
+    with gzip.open(Path(config.project_root, 'reinforcement', 'Logs', 'snrsweep_testing_mean_episode_rewards_random.gstor'), 'wb') as file:
         pickle.dump(random_mean_reward, file)
-    with gzip.open('C:\\Py\\MasterThesis\\resourceallocation\\reinforcement\\logs\\snrsweep_testing_mean_episode_rewards_maxpower.gstor', 'wb') as file:
+    with gzip.open(Path(config.project_root, 'reinforcement', 'Logs', 'snrsweep_testing_mean_episode_rewards_maxpower.gstor'), 'wb') as file:
         pickle.dump(max_power_mean_reward, file)
-    with gzip.open('C:\\Py\\MasterThesis\\resourceallocation\\reinforcement\\logs\\snrsweep_testing_mean_episode_rewards_wmmse.gstor', 'wb') as file:
+    with gzip.open(Path(config.project_root, 'reinforcement', 'Logs', 'snrsweep_testing_mean_episode_rewards_wmmse.gstor'), 'wb') as file:
         pickle.dump(wmmse_mean_reward, file)
 
     dqn_mean_energy_efficiency = dqn_mean_reward / snr

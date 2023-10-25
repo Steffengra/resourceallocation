@@ -1,6 +1,5 @@
 
 import matplotlib.pyplot as plt
-from os.path import join
 from scheduling.dqn_runner import Runner
 
 import sys

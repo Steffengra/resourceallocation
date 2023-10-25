@@ -1,5 +1,5 @@
 
-from os.path import (join, dirname)
+from pathlib import Path
 from numpy import floor
 
 
@@ -65,8 +65,12 @@ class Config:
         # Setup (don't change)------------------------------------------------------------------------------------------
         self.num_users: int = sum(self.num_users_per_job.values())
 
-        self.model_path: str = join(dirname(__file__), 'SavedModels', simulation_title)
-        self.log_path: str = join(dirname(__file__), 'logs')
+        self.project_root: Path = Path(Path(__file__)).parent.parent
+        self.model_path: Path = Path(self.project_root, 'scheduling_policygradient', 'SavedModels', simulation_title)
+        self.log_path: Path = Path(self.project_root, 'scheduling_policygradient', 'logs')
+
+        self.model_path.mkdir(parents=True, exist_ok=True)
+        self.log_path.mkdir(parents=True, exist_ok=True)
 
         # Plotting------------------------------------------------------------------------------------------------------
         # Branding Palette

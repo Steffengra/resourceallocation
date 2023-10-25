@@ -1,4 +1,8 @@
-import pickle, gzip
+
+import gzip
+import pickle
+from pathlib import Path
+
 import numpy as np
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
@@ -11,8 +15,8 @@ from supervised.imports.wmmse import wmmse
 P_max = 1
 num_channels = 10
 channel_type = 'rayleigh'  # {'rayleigh', 'gaussian'}
-file_path = 'C:\\Py\\MasterThesis\\resourceallocation\\supervised\\datasets\\dataset_wmmse_'+channel_type+'_C'+str(num_channels)+'_P'+str(P_max)+'.gstor'
-checkpoint_path = 'C:\\Py\\MasterThesis\\resourceallocation\\supervised\\SavedModels\\dnn1keras\\checkpoints\\model.ckpt'
+file_path = Path(Path(__file__), 'datasets', f'dataset_wmmse_{channel_type}_C{num_channels}_P{P_max}.gstor')
+checkpoint_path = Path(Path(__file__), 'SavedModels', 'dnn1keras', 'checkpoints', 'model.ckpt')
 validation_size, test_size = 0.1, 0.1  # relative
 
 num_episodes: int = 300
@@ -148,15 +152,15 @@ for ii in range(len(y_pred)):
 print('\rCalculating throughputs.. done')
 
 # Log throughput
-with gzip.open('C:\\Py\\MasterThesis\\resourceallocation\\supervised\\logs\\throughput_model.gstor', 'wb') as file:
+with gzip.open(Path(Path(__file__), 'logs', 'throughput_model.gstor'), 'wb') as file:
     pickle.dump(Throughput_dnn, file)
-with gzip.open('C:\\Py\\MasterThesis\\resourceallocation\\supervised\\logs\\throughput_model_postprocessed.gstor', 'wb') as file:
+with gzip.open(Path(Path(__file__), 'logs', 'throughput_model_postprocessed.gstor'), 'wb') as file:
     pickle.dump(Throughput_dnn_postprocessed, file)
-with gzip.open('C:\\Py\\MasterThesis\\resourceallocation\\supervised\\logs\\throughput_wmmse.gstor', 'wb') as file:
+with gzip.open(Path(Path(__file__), 'logs', 'throughput_wmmse.gstor'), 'wb') as file:
     pickle.dump(Throughput_wmmse, file)
-with gzip.open('C:\\Py\\MasterThesis\\resourceallocation\\supervised\\logs\\throughput_pmax.gstor', 'wb') as file:
+with gzip.open(Path(Path(__file__), 'logs', 'throughput_pmax.gstor'), 'wb') as file:
     pickle.dump(Throughput_Pmax, file)
-with gzip.open('C:\\Py\\MasterThesis\\resourceallocation\\supervised\\logs\\throguhput_random.gstor', 'wb') as file:
+with gzip.open(Path(Path(__file__), 'logs', 'throguhput_random.gstor'), 'wb') as file:
     pickle.dump(Throughput_random, file)
 
 # Plotting---------------------------------------------------------------------------------

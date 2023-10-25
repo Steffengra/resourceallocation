@@ -1,8 +1,12 @@
+
+from pathlib import Path
+import gzip
+import pickle
+
 import numpy as np
+import tensorflow as tf
 import matplotlib.pyplot as plt
 from matplotlib import cm
-import tensorflow as tf
-import gzip, pickle
 
 from reinforcement.imports.dqn import DQN
 from reinforcement.imports.simulation_1 import Simulation
@@ -250,10 +254,10 @@ class Runner:
                 plt.title('Vehicle Trajectories')
                 fig.tight_layout()
 
-                with gzip.open('C:\\Py\\MasterThesis\\resourceallocation\\reinforcement\\logs\\trajectories_vehicles.gstor',
+                with gzip.open(Path(self.config.project_root, 'reinforcement', 'logs', 'trajectories_vehicles.gstor'),
                                'wb') as file:
                     pickle.dump(vehicles_trajectory, file)
-                with gzip.open('C:\\Py\\MasterThesis\\resourceallocation\\reinforcement\\logs\\trajectories_towers.gstor',
+                with gzip.open(Path(self.config.project_root, 'reinforcement', 'logs', 'trajectories_towers.gstor'),
                                'wb') as file:
                     pickle.dump(self.simulation_dqn.towers, file)
 
@@ -300,13 +304,13 @@ class Runner:
                       ' at reward ' + str(round(best_checkpoint_reward, 1)))
 
         # Save logs--------------------------------------
-        with gzip.open('C:\\Py\\MasterThesis\\resourceallocation\\reinforcement\\logs\\training_episode_rewards_dqn.gstor',
+        with gzip.open(Path(self.config.project_root, 'reinforcement', 'logs', 'training_episode_rewards_dqn.gstor'),
                        'wb') as file:
             pickle.dump(self.dqn_total_rewards, file)
-        with gzip.open('C:\\Py\\MasterThesis\\resourceallocation\\reinforcement\\logs\\training_episode_rewards_random.gstor',
+        with gzip.open(Path(self.config.project_root, 'reinforcement', 'logs', 'training_episode_rewards_random.gstor'),
                        'wb') as file:
             pickle.dump(self.random_total_rewards, file)
-        with gzip.open('C:\\Py\\MasterThesis\\resourceallocation\\reinforcement\\logs\\training_episode_rewards_maxpower.gstor',
+        with gzip.open(Path(self.config.project_root, 'reinforcement', 'logs', 'training_episode_rewards_maxpower.gstor'),
                        'wb') as file:
             pickle.dump(self.max_total_rewards, file)
 
@@ -346,15 +350,15 @@ class Runner:
             self.simulation_max.reset(self.config.p_max, self.online_normalization_buffer)
             self.simulation_wmmse.reset(self.config.p_max, self.online_normalization_buffer)
 
-        with gzip.open('C:\\Py\\MasterThesis\\resourceallocation\\reinforcement\\logs\\testing_episode_rewards_dqn.gstor',
+        with gzip.open(Path(self.config.project_root, 'reinforcement', 'logs', 'testing_episode_rewards_dqn.gstor'),
                        'wb') as file:
             pickle.dump(self.dqn_total_rewards, file)
-        with gzip.open('C:\\Py\\MasterThesis\\resourceallocation\\reinforcement\\logs\\testing_episode_rewards_random.gstor',
+        with gzip.open(Path(self.config.project_root, 'reinforcement', 'logs', 'testing_episode_rewards_random.gstor'),
                        'wb') as file:
             pickle.dump(self.random_total_rewards, file)
-        with gzip.open('C:\\Py\\MasterThesis\\resourceallocation\\reinforcement\\logs\\testing_episode_rewards_maxpower.gstor',
+        with gzip.open(Path(self.config.project_root, 'reinforcement', 'logs', 'testing_episode_rewards_maxpower.gstor'),
                        'wb') as file:
             pickle.dump(self.max_total_rewards, file)
-        with gzip.open('C:\\Py\\MasterThesis\\resourceallocation\\reinforcement\\logs\\testing_episode_rewards_wmmse.gstor',
+        with gzip.open(Path(self.config.project_root, 'reinforcement', 'logs', 'testing_episode_rewards_wmmse.gstor'),
                        'wb') as file:
             pickle.dump(self.wmmse_total_rewards, file)

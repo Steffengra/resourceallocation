@@ -1,8 +1,12 @@
+
+import gzip
+import pickle
+from pathlib import Path
+
 import tensorflow as tf
 import numpy as np
 from timeit import default_timer
 import matplotlib.pyplot as plt
-import gzip, pickle
 
 from scheduling_policygradient.imports.simulation import Simulation
 from scheduling_policygradient.policygradient_config import Config
@@ -109,8 +113,7 @@ def allocation_post_processing(unfixed_allocation_vector, sim, config):
 
     return fixed_allocation_vector
 
-actor = tf.keras.models.load_model(
-    'C:\\Py\\MasterThesis\\resourceallocation\\scheduling_policygradient\\SavedModels\\ddpg\\actor')
+actor = tf.keras.models.load_model(Path(config.project_root, 'scheduling_policygradient', 'SavedModels', 'ddpg', 'actor'))
 
 actor.summary()
 
@@ -189,9 +192,7 @@ for episode_id in range(config.num_episodes):
 
 print('\rTesting run times.. done.', flush=True)
 
-with gzip.open(
-        'C:\\Py\\MasterThesis\\resourceallocation\\scheduling_policygradient\\logs\\testing_run_times.gstor',
-        'wb') as file:
+with gzip.open(Path(config.project_root, 'scheduling_policygradient', 'logs', 'testing_run_times.gstor'), 'wb') as file:
     pickle.dump(mean_run_times_per_episode, file)
 
 # Plotting

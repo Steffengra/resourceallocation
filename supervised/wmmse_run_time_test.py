@@ -1,4 +1,8 @@
-import pickle, gzip
+
+import gzip
+import pickle
+from pathlib import Path
+
 import numpy as np
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
@@ -8,12 +12,8 @@ from supervised.imports.wmmse import wmmse
 
 
 def load_data(path, test_size):
-    if path.split('.')[-1] == 'gstor':
-        with gzip.open(path, 'rb') as f:
-            Data = pickle.load(f)
-    else:
-        with open(path, 'rb') as f:
-            Data = pickle.load(f)
+    with gzip.open(path, 'rb') as f:
+        Data = pickle.load(f)
     X = Data[0][:, :, :]  # Scale to 0.. 1? [1]
     y = Data[1][:, :]
 
@@ -23,8 +23,8 @@ def load_data(path, test_size):
 P_max = 1
 num_channels = 10
 channel_type = 'rayleigh'  # {'rayleigh', 'gaussian'}
-file_path = 'C:\\Py\\MasterThesis\\resourceallocation\\supervised\\datasets\\dataset_wmmse_'+channel_type+'_C'+str(num_channels)+'_P'+str(P_max)+'.gstor'
-checkpoint_path = 'C:\\Py\\MasterThesis\\resourceallocation\\supervised\\SavedModels\\dnn1keras\\checkpoints\\model.ckpt'
+file_path = Path(Path(__file__), 'datasets', f'dataset_wmmse_{channel_type}_C{num_channels}_P{P_max}.gstor')
+checkpoint_path = Path(Path(__file__), 'SavedModels', 'dnn1keras', 'checkpoints', 'model.ckpt')
 validation_size, test_size = 0.1, 0.1  # relative
 
 X_train, X_test, y_train, y_test = load_data(file_path, test_size)
@@ -52,9 +52,3 @@ print('\rTesting run times.. done', flush=True)
 
 print(np.mean(run_time_model))
 print(np.mean(run_time_wmmse))
-
-# Save log data
-# with gzip.open('C:\\Py\\MasterThesis\\resourceallocation\\supervised\\logs\\run_time_model.gstor', 'wb') as file:
-#     pickle.dump(run_time_model, file)
-# with gzip.open('C:\\Py\\MasterThesis\\resourceallocation\\supervised\\logs\\run_time_wmmse.gstor', 'wb') as file:
-#     pickle.dump(run_time_wmmse, file)
